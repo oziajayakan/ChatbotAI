@@ -659,6 +659,51 @@
 
   .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 25; backdrop-filter: blur(3px); }
 
+  /* ============ Animations ============ */
+  @keyframes flicker { 0%, 91%, 100% { opacity: 1; } 92% { opacity: .72; } 93% { opacity: 1; } 95% { opacity: .84; } 96% { opacity: 1; } }
+  @keyframes shine { to { background-position: 300% 0; } }
+  @keyframes sweep { from { transform: translateY(-140px); } to { transform: translateY(1400px); } }
+  @keyframes glowpulse { 0%, 100% { box-shadow: 0 0 6px var(--accent-glow); } 50% { box-shadow: 0 0 18px var(--accent-glow); } }
+  @keyframes edgepulse { 0%, 100% { box-shadow: -8px 0 24px -14px var(--accent-glow); border-left-color: var(--accent); } 50% { box-shadow: -10px 0 30px -8px var(--accent-glow); border-left-color: #fff; } }
+  @keyframes ring { from { transform: scale(1); opacity: .9; } to { transform: scale(2.5); opacity: 0; } }
+  @keyframes typein { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes flashtxt { 0% { color: #fff; text-shadow: 0 0 10px var(--accent); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+  .brand-name { animation: flicker 6s infinite; }
+  .logo { animation: glowpulse 3s ease-in-out infinite; }
+  .status[data-s="busy"] { animation: glowpulse 1.1s ease-in-out infinite; }
+  .welcome h2 em {
+    background: linear-gradient(90deg, var(--accent), #fff, var(--accent-soft), var(--accent));
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    animation: shine 5s linear infinite;
+  }
+  .stage::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 140px;
+    background: linear-gradient(180deg, transparent, var(--accent-dim), transparent);
+    pointer-events: none; z-index: 3;
+    animation: sweep 8s linear infinite;
+  }
+  /* boot: elemen masuk berurutan */
+  .rcard { animation: rise .55s ease backwards; }
+  .rcard:nth-child(1) { animation-delay: .05s; } .rcard:nth-child(2) { animation-delay: .12s; } .rcard:nth-child(3) { animation-delay: .19s; }
+  .rcard:nth-child(4) { animation-delay: .26s; } .rcard:nth-child(5) { animation-delay: .33s; } .rcard:nth-child(6) { animation-delay: .40s; }
+  .rail .hud { animation: rise .6s ease backwards; }
+  .rail .hud:nth-child(1) { animation-delay: .2s; } .rail .hud:nth-child(2) { animation-delay: .32s; } .rail .hud:nth-child(3) { animation-delay: .44s; } .rail .hud:nth-child(4) { animation-delay: .56s; }
+  .chip { animation: rise .6s ease backwards; }
+  .chip:nth-child(1) { animation-delay: .25s; } .chip:nth-child(2) { animation-delay: .35s; } .chip:nth-child(3) { animation-delay: .45s; } .chip:nth-child(4) { animation-delay: .55s; }
+  .conv-item { animation: rise .35s ease backwards; }
+  .rcard.scan { border-color: var(--accent-line); box-shadow: inset 0 0 14px var(--accent-dim); }
+  .flash { animation: flashtxt .6s ease-out; }
+  .msg-row.bot .bubble.live { animation: edgepulse 1.4s ease-in-out infinite; }
+  .tl .tm { animation: typein .5s steps(28) both; }
+  .send { position: relative; }
+  .send.burst::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--accent); pointer-events: none; animation: ring .65s ease-out; }
+  .send:active { transform: scale(.92); }
+  .w-badge { animation: drift 3.2s ease-in-out infinite; }
+
   /* ============ Responsive ============ */
   @media (max-width: 1280px) { .rail { display: none; } }
   @media (max-width: 1100px) {
@@ -689,7 +734,7 @@
   }
   @media (max-height: 860px) { .welcome p { display: none; } }
   @media (max-height: 700px) { .chip-sub { display: none; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  :root[data-motion="calm"] *, :root[data-motion="calm"] *::before, :root[data-motion="calm"] *::after { animation: none !important; transition: none !important; }
 </style>
 </head>
 <body>
@@ -704,6 +749,7 @@
     </div>
     <div class="banner-r">
       <span class="banner-txt">Jawaban AI dapat keliru — periksa kembali info penting</span>
+      <button id="motionBtn" class="btn-mini" type="button" title="Animasi penuh / tenang (mengikuti pengaturan sistem bila belum dipilih)">MOTION: FULL</button>
       <button id="themeBtn" class="btn-mini" type="button" title="Ganti palet warna">PALETTE: PINK</button>
     </div>
   </div>
@@ -852,7 +898,6 @@ const convListEl = $("#convList"), sidebar = $("#sidebar"), backdrop = $("#backd
 const searchInput = $("#searchInput");
 const SEND_ICON = sendBtn.innerHTML;
 const STOP_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
-const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const CTX_LIMIT = 30;
 
 const SUGGESTIONS = [
@@ -901,6 +946,20 @@ $("#themeBtn").onclick = () => {
   const next = root.dataset.theme === "matrix" ? "pink" : "matrix";
   localStorage.setItem("nova-theme", next);
   applyTheme(next);
+};
+
+/* ---------- Mode animasi (FULL / CALM) ---------- */
+function applyMotion(m) {
+  root.dataset.motion = m;
+  $("#motionBtn").textContent = m === "calm" ? "MOTION: CALM" : "MOTION: FULL";
+}
+let storedMotion = null;
+try { storedMotion = localStorage.getItem("nova-motion"); } catch {}
+applyMotion(storedMotion || (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "calm" : "full"));
+$("#motionBtn").onclick = () => {
+  const next = root.dataset.motion === "calm" ? "full" : "calm";
+  try { localStorage.setItem("nova-motion", next); } catch {}
+  applyMotion(next);
 };
 
 /* ---------- Sidebar toggle ---------- */
@@ -1239,6 +1298,8 @@ async function send(text) {
   bubble.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
   setBusy(true);
   controller = new AbortController();
+  sendBtn.classList.remove("burst"); void sendBtn.offsetWidth; sendBtn.classList.add("burst");
+  setTimeout(() => sendBtn.classList.remove("burst"), 700);
   tele.t0 = performance.now(); tele.latency = 0; tele.chars = 0; tele.replyLen = 0; tele.replyText = "";
   traceT0 = tele.t0;
   setPhase("think");
@@ -1279,7 +1340,7 @@ async function send(text) {
 
     const reader = res.body.getReader();
     const dec = new TextDecoder();
-    bubble.classList.add("md");
+    bubble.classList.add("md", "live");
 
     // Render markdown paling sering tiap 80ms (parse + highlight ulang seluruh teks itu mahal)
     let live = true, paintTimer = null, lastPaint = 0;
@@ -1332,6 +1393,7 @@ async function send(text) {
     } finally {
       live = false;
       clearTimeout(paintTimer);
+      bubble.classList.remove("live");
     }
     flushThought(true);
     full += dec.decode();
@@ -1493,7 +1555,7 @@ function drawVortex(ts) {
   const welcome = !stage.classList.contains("has-msgs");
   const thinking = tele.phase === "think", streaming = tele.phase === "stream";
   // idle: berputar tenang · thinking: menyedot partikel kencang · menjawab: memancarkan gelombang
-  const target = REDUCED ? 0.05 : (thinking ? 3.4 : streaming ? 2.2 : (welcome ? 0.9 : 0.6)) + tele.pulse * 0.8;
+  const target = root.dataset.motion === "calm" ? 0.22 : (thinking ? 3.4 : streaming ? 2.2 : (welcome ? 0.9 : 0.6)) + tele.pulse * 0.8;
   speed += (target - speed) * 0.05;
   phase += 0.015 * speed;
   tele.pulse *= 0.96;
@@ -1683,14 +1745,14 @@ function drawMatrix(ts) {
 }
 
 /* ---- Stream flow bars ---- */
-function drawFlow() {
+function drawFlow(ts = 0) {
   const { w, h, dpr } = fitCanvas(fcv);
   if (!w) return;
   fctx.clearRect(0, 0, w, h);
   const n = tele.cpsHist.length, bw = w / n;
   const mx = Math.max(60, ...tele.cpsHist);
   for (let i = 0; i < n; i++) {
-    const v = tele.cpsHist[i] / mx;
+    const v = Math.max(tele.cpsHist[i] / mx, 0.09 + 0.07 * Math.sin(ts * 0.004 + i * 0.5));
     const bh = Math.max(2 * dpr, v * (h - 3 * dpr));
     fctx.fillStyle = i % 3 === 0 ? palette.accent : palette.soft;
     fctx.fillRect(i * bw + dpr, h - bh, Math.max(1.5, bw - 2 * dpr), bh);
@@ -1781,8 +1843,13 @@ let lastScan = 0;
 function frame(ts) {
   drawVortex(ts);
   if (ts - lastScan > (busy ? 70 : 280)) { lastScan = ts; scanIdx = (scanIdx + 1) % 64; }
-  if (window.matchMedia("(min-width: 1281px)").matches) { drawMatrix(ts); drawFlow(); drawDepth(ts); drawGauge(ts); }
+  if (window.matchMedia("(min-width: 1281px)").matches) { drawMatrix(ts); drawFlow(ts); drawDepth(ts); drawGauge(ts); }
   requestAnimationFrame(frame);
+}
+
+function setTxt(sel, v) {
+  const e = $(sel); v = String(v);
+  if (e.textContent !== v) { e.textContent = v; e.classList.remove("flash"); void e.offsetWidth; e.classList.add("flash"); }
 }
 
 /* ---- 250ms telemetry tick ---- */
@@ -1798,23 +1865,27 @@ function tick() {
   const ctxPct = Math.min(1, history.length / CTX_LIMIT);
   const wob = Math.sin(tickN * 0.35);
   const push = (i, v) => { const a = tele.sparks[i]; a.push(Math.max(0.04, Math.min(0.96, v))); a.shift(); };
-  push(0, inLen / 600 + 0.1 + (busy ? 0.3 * Math.abs(wob) : 0));
-  push(1, ctxPct + 0.05);
-  push(2, tele.latency ? 1 - Math.min(1, tele.latency / 4000) : 0.2 + 0.05 * wob);
-  push(3, busy ? 0.5 + 0.4 * wob : 0.12);
-  push(4, tele.guard === "FAULT" ? 0.9 : 0.35 + 0.05 * wob);
-  push(5, tele.cpsNow / 160 + 0.05);
+  const amb = (k, a) => 0.22 + a * Math.sin(tickN * 0.31 + k * 1.7) * (busy ? 1.6 : 1);   // gelombang ambient: UI tidak pernah diam
+  push(0, inLen / 600 + 0.1 + amb(0, 0.1) + (busy ? 0.25 * Math.abs(wob) : 0));
+  push(1, ctxPct * 0.8 + amb(1, 0.09));
+  push(2, tele.latency ? 1 - Math.min(1, tele.latency / 4000) + 0.05 * wob : amb(2, 0.12));
+  push(3, busy ? 0.5 + 0.4 * wob : amb(3, 0.1));
+  push(4, tele.guard === "FAULT" ? 0.9 : amb(4, 0.08));
+  push(5, tele.cpsNow / 160 + amb(5, 0.08));
   const cols = [palette.soft, palette.soft, palette.accent, palette.accent, tele.guard === "FAULT" ? "#ff5470" : palette.soft, palette.accent];
   for (let i = 0; i < 6; i++) spark("rs" + i, tele.sparks[i], cols[i], i === 5);
 
-  $("#rt0").textContent = tele.intent ? tele.intent.k : "READY";
+  setTxt("#rt0", tele.intent ? tele.intent.k : "READY");
   $("#rv0").textContent = busy && tele.intent ? tele.intent.conf + "%" : inLen + " ch";
-  $("#rt1").textContent = history.length + " / " + CTX_LIMIT;
-  $("#rv1").textContent = Math.round(ctxPct * 100) + "%";
-  $("#rv2").textContent = tele.latency ? tele.latency + " ms" : "— ms";
-  $("#rv3").textContent = tele.http || "—";
-  $("#rv4").textContent = tele.guard;
-  $("#rt5").textContent = tele.phase === "stream" ? "LIVE" : "IDLE";
+  setTxt("#rt1", history.length + " / " + CTX_LIMIT);
+  setTxt("#rv1", Math.round(ctxPct * 100) + "%");
+  setTxt("#rv2", tele.latency ? tele.latency + " ms" : "— ms");
+  setTxt("#rv3", tele.http || "—");
+  setTxt("#rv4", tele.guard);
+  setTxt("#rt5", tele.phase === "stream" ? "LIVE" : "IDLE");
+  // saat idle, cahaya "pemindai" berjalan pelan di antara kartu pipeline
+  const scanOn = tele.phase === "idle" && pipeCur === -1;
+  for (let k = 0; k < PIPE_N; k++) $("#rc" + k).classList.toggle("scan", scanOn && k === Math.floor(tickN / 4) % PIPE_N);
   $("#rv5").textContent = Math.round(tele.cpsNow) + " c/s";
 
   $("#flowTag").textContent = Math.round(tele.cpsNow) + " c/s";
@@ -1831,6 +1902,22 @@ function clock() {
   $("#clkD").textContent = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
   $("#clkT").textContent = d.toTimeString().slice(0, 8);
 }
+
+/* ---------- Placeholder mengetik sendiri ---------- */
+(function placeholderTyper() {
+  const P = ["Ketik pesan atau pertanyaan untuk NOVA…", "Coba: buatkan fungsi debounce di JavaScript", "Coba: jelaskan perbedaan SQL dan NoSQL", "Coba: bandingkan REST dan GraphQL", "Coba: rangkum konsep serverless dalam 3 poin"];
+  let pi = 0, ci = P[0].length, dir = -1, hold = 20;
+  setInterval(() => {
+    if (busy || input.value) return;
+    if (root.dataset.motion === "calm") { input.placeholder = P[0]; return; }
+    if (hold > 0) { hold--; return; }
+    const p = P[pi];
+    ci += dir;
+    input.placeholder = p.slice(0, Math.max(0, ci)) + "▌";
+    if (dir === 1 && ci >= p.length) { dir = -1; hold = 34; }
+    else if (dir === -1 && ci <= 0) { dir = 1; pi = (pi + 1) % P.length; hold = 3; }
+  }, 42);
+})();
 
 /* ---------- Init ---------- */
 showWelcome();
