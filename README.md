@@ -15,6 +15,13 @@ Chatbot AI modern berbasis **Google Gemini API** dengan streaming balasan (Serve
   - **Update**: Mengubah judul percakapan langsung dari sidebar.
   - **Delete**: Menghapus satu percakapan tertentu atau membersihkan seluruh riwayat percakapan.
 - **Siap Deploy ke Vercel (Serverless)**: Menggunakan `node:sqlite` (Node.js >= 22) dengan penyimpanan di direktori writable `/tmp/nova_chatbot.db` pada Vercel Serverless Function dan `.tmp/nova_chatbot.db` saat dijalankan lokal.
+- **UI "Neural Core" bergaya HUD**:
+  - **NOVA Neural Core**: berputar tenang saat idle, menyedot partikel saat *thinking*, memancarkan gelombang saat menjawab.
+  - **Pipeline 6 tahap** (PARSER → RAG → REASONER → TOOLS → GUARD → SYNTH) menyala bergantian kiri ke kanan setiap pesan dikirim. Tahapnya mengikuti proses nyata (deteksi intent, jendela konteks, latensi model, panggilan API, aturan sistem, streaming), bukan RAG/tool eksternal sungguhan.
+  - **Callout INTENT / DETECTED**: topik pesan (CODING, ANALYSIS, EXPLAIN, WRITING, MATH, TRANSLATE, CHAT) terdeteksi lokal secara otomatis, bahkan saat mengetik.
+  - **Context Window Depth**: sisi kiri = token input, sisi kanan = memory/output (perkiraan karakter ÷ 4).
+  - **Attention Matrix 8×8**: ilustrasi self-attention dari kata-kata terakhir (bukan bobot asli model).
+  - **Reasoning Trace**: langkah proses ditampilkan baris demi baris; jika model mengirim ringkasan reasoning (`includeThoughts`), ringkasannya ikut tampil. Jika model/API tidak mendukungnya, backend otomatis mengulang tanpa parameter itu.
 - **Keamanan Credential**: API Key hanya diakses di sisi backend serverless (`api/chat.js`) dan tidak pernah terekspos ke browser.
 
 ---

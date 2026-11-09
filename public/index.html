@@ -245,6 +245,7 @@
     border-bottom: 2px solid var(--accent);
     background: linear-gradient(180deg, #0b0912 0%, var(--accent-dim) 100%);
   }
+  .rcard.done { border-bottom: 2px solid var(--accent-line); background: linear-gradient(180deg, #0b0912 0%, rgba(255,79,163,.05) 100%); }
   .rtop { display: flex; justify-content: space-between; align-items: center; font-size: 9px; letter-spacing: .06em; color: var(--text-mid); }
   .rtop .n { color: var(--text-dim); font-size: 8.5px; margin-right: 5px; }
   .rtop .nm { color: var(--text); font-weight: 700; }
@@ -398,10 +399,12 @@
     pointer-events: none;
   }
   .stage.has-msgs #vortex { opacity: .3; }
+  .stage.has-msgs.live #vortex { opacity: .52; }
 
   main { flex: 1; min-height: 0; position: relative; z-index: 1; display: flex; flex-direction: column; }
 
   #chat {
+    position: relative; z-index: 1;
     flex: 1;
     overflow-y: auto;
     padding: 20px clamp(12px, 3vw, 40px) 24px;
@@ -484,6 +487,7 @@
   .msg-row.user .msg-body { align-items: flex-end; flex: 0 1 auto; max-width: min(82%, 760px); }
   .msg-meta { display: flex; gap: 8px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); padding: 0 2px; }
   .msg-meta b { color: var(--text-mid); font-weight: 700; }
+  .msg-meta .intent { color: var(--accent-soft); font-weight: 700; }
   .msg-row.bot .msg-meta b { color: var(--accent); }
 
   .bubble {
@@ -554,6 +558,37 @@
   .cursor { display: inline-block; width: 7px; height: 1.05em; background: var(--accent); margin-left: 3px; vertical-align: -2px; animation: blink 1s infinite; box-shadow: 0 0 8px var(--accent-glow); }
   @keyframes blink { 50% { opacity: .2; } }
 
+  /* reasoning trace dock */
+  .trace { flex: none; position: relative; z-index: 2; width: 100%; max-width: calc(1100px + 2 * clamp(12px, 3vw, 40px)); align-self: center; padding: 0 clamp(12px, 3vw, 40px) 6px; }
+  .trace-box { background: rgba(8, 6, 14, .94); border: 1px solid var(--border-dim); backdrop-filter: blur(6px); }
+  .trace-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: #0d0a16; border-bottom: 1px solid var(--border-dim); font-size: 9.5px; }
+  .trace-tabs { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .trace-tab { color: var(--text); font-weight: 600; border-bottom: 2px solid var(--accent); padding-bottom: 2px; white-space: nowrap; }
+  .trace-sub { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trace-btns { display: flex; align-items: center; gap: 6px; flex: none; }
+  .trace-live { color: var(--accent); font-weight: 800; font-size: 9px; letter-spacing: .08em; margin-right: 4px; }
+  .trace-live.off { color: var(--text-dim); }
+  .tbtn { font: 700 8.5px var(--mono); letter-spacing: .06em; background: transparent; border: 1px solid var(--border-mid); color: var(--text-mid); padding: 1px 6px; cursor: pointer; }
+  .tbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .trace-body { height: 118px; overflow-y: auto; padding: 4px 0; font-size: 10.5px; line-height: 1.5; }
+  .trace-body::-webkit-scrollbar { width: 5px; }
+  .trace-body::-webkit-scrollbar-thumb { background: var(--border-mid); }
+  .trace.collapsed .trace-body { display: none; }
+  .tl { display: grid; grid-template-columns: 22px 48px 54px 1fr; gap: 8px; padding: 0 10px; border-left: 2px solid transparent; align-items: baseline; animation: rise .2s ease both; }
+  .tl .tn { color: var(--text-dim); text-align: right; }
+  .tl .tt { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .tl .tk { font-weight: 800; font-size: 9px; letter-spacing: .06em; color: var(--text-mid); }
+  .tl .tm { color: var(--text); overflow-wrap: anywhere; }
+  .tl.k-parse .tk, .tl.k-ctx .tk { color: var(--accent-soft); }
+  .tl.k-api .tk { color: var(--amber); }
+  .tl.k-model .tk, .tl.k-stream .tk { color: var(--accent); }
+  .tl.k-think .tk { color: #fff; }
+  .tl.k-think .tm { color: #d8c8ee; font-style: italic; }
+  .tl.k-save .tk { color: var(--green); }
+  .tl.k-err .tk, .tl.k-err .tm { color: var(--danger); }
+  .tl.k-sys .tm { color: var(--text-dim); }
+  .tl.active { background: linear-gradient(90deg, var(--accent-dim) 0%, transparent 92%); border-left-color: var(--accent); }
+
   /* composer */
   .composer-wrap {
     flex: none;
@@ -609,6 +644,9 @@
   .hud canvas { width: 100%; display: block; }
   #matrix { height: 108px; }
   #flow { height: 54px; }
+  #depth { height: 70px; }
+  .depth-foot { display: flex; justify-content: space-between; font-size: 8.5px; color: var(--text-mid); letter-spacing: .06em; }
+  .depth-foot b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
   #gauge { height: 72px; }
   .kv { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; border-top: 1px solid rgba(255,255,255,.05); padding-top: 5px; }
   .kv span { display: block; color: var(--text-dim); font-size: 7.5px; letter-spacing: .08em; }
@@ -639,6 +677,8 @@
   @media (max-width: 640px) {
     .ribbon { display: none; }
     .brand-model { display: none; }
+    .trace-body { height: 76px; }
+    .trace-sub { display: none; }
     .banner-l .banner-txt { font-size: 8.5px; }
     .msg-row .avatar { width: 26px; height: 26px; margin-top: 15px; }
     .msg-row.user .msg-body { max-width: 88%; }
@@ -647,7 +687,8 @@
     .cbar .hint { display: none; }
     .welcome p { display: none; }
   }
-  @media (max-height: 640px) { .welcome p { display: none; } .chip-sub { display: none; } }
+  @media (max-height: 860px) { .welcome p { display: none; } }
+  @media (max-height: 700px) { .chip-sub { display: none; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -705,19 +746,19 @@
   </header>
 
   <!-- Telemetry ribbon -->
-  <section class="ribbon" aria-label="Telemetri">
-    <div class="rcard" id="rc0"><div class="rtop"><div><span class="n">01</span><span class="nm">INPUT</span></div><span class="rtag" id="rt0">READY</span></div><div class="rbot"><canvas id="rs0"></canvas><span class="rval" id="rv0">0 ch</span></div></div>
-    <div class="rcard" id="rc1"><div class="rtop"><div><span class="n">02</span><span class="nm">CONTEXT</span></div><span class="rtag pu" id="rt1">0 / 30</span></div><div class="rbot"><canvas id="rs1"></canvas><span class="rval" id="rv1">0%</span></div></div>
-    <div class="rcard hl" id="rc2"><div class="rtop"><div><span class="n">03</span><span class="nm">MODEL</span></div><span class="rtag pk" id="rt2" title="Model yang dipakai">FLASH</span></div><div class="rbot"><canvas id="rs2"></canvas><span class="rval" id="rv2">— ms</span></div></div>
-    <div class="rcard" id="rc3"><div class="rtop"><div><span class="n">04</span><span class="nm">STREAM</span></div><span class="rtag" id="rt3">SSE</span></div><div class="rbot"><canvas id="rs3"></canvas><span class="rval" id="rv3">0 c/s</span></div></div>
-    <div class="rcard" id="rc4"><div class="rtop"><div><span class="n">05</span><span class="nm">MEMORY</span></div><span class="rtag pu" id="dbBadge">SQLite3</span></div><div class="rbot"><canvas id="rs4"></canvas><span class="rval" id="rv4">0 conv</span></div></div>
-    <div class="rcard" id="rc5"><div class="rtop"><div><span class="n">06</span><span class="nm">STATE</span></div><span class="rtag" id="rt5">IDLE</span></div><div class="rbot"><canvas id="rs5"></canvas><span class="rval" id="rv5">STANDBY</span></div></div>
+  <section class="ribbon" aria-label="Pipeline AI">
+    <div class="rcard" id="rc0" title="Mendeteksi intent pesan"><div class="rtop"><div><span class="n">01</span><span class="nm">PARSER</span></div><span class="rtag " id="rt0">READY</span></div><div class="rbot"><canvas id="rs0"></canvas><span class="rval" id="rv0">0 ch</span></div></div>
+    <div class="rcard" id="rc1" title="Memuat konteks percakapan (jendela 30 pesan)"><div class="rtop"><div><span class="n">02</span><span class="nm">RAG</span></div><span class="rtag pu" id="rt1">0 / 30</span></div><div class="rbot"><canvas id="rs1"></canvas><span class="rval" id="rv1">0%</span></div></div>
+    <div class="rcard" id="rc2" title="Model Gemini menalar jawaban"><div class="rtop"><div><span class="n">03</span><span class="nm">REASONER</span></div><span class="rtag pk" id="rt2">FLASH</span></div><div class="rbot"><canvas id="rs2"></canvas><span class="rval" id="rv2">— ms</span></div></div>
+    <div class="rcard" id="rc3" title="Panggilan API /api/chat"><div class="rtop"><div><span class="n">04</span><span class="nm">TOOLS</span></div><span class="rtag " id="rt3">API</span></div><div class="rbot"><canvas id="rs3"></canvas><span class="rval" id="rv3">—</span></div></div>
+    <div class="rcard" id="rc4" title="Aturan system prompt & penanganan error"><div class="rtop"><div><span class="n">05</span><span class="nm">GUARD</span></div><span class="rtag " id="rt4">RULES</span></div><div class="rbot"><canvas id="rs4"></canvas><span class="rval" id="rv4">SAFE</span></div></div>
+    <div class="rcard" id="rc5" title="Penyusunan & streaming jawaban"><div class="rtop"><div><span class="n">06</span><span class="nm">SYNTH</span></div><span class="rtag pu" id="rt5">IDLE</span></div><div class="rbot"><canvas id="rs5"></canvas><span class="rval" id="rv5">0 c/s</span></div></div>
   </section>
 
   <div class="work" id="work">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar" aria-label="Riwayat percakapan">
-      <div class="panel-title"><span>History // Database</span><span class="tag" id="convCount">0</span></div>
+      <div class="panel-title"><span>History // Database</span><span class="tag"><span id="dbBadge">SQLite3</span> · <span id="convCount">00</span></span></div>
       <div class="side-actions">
         <button type="button" class="new-btn" id="newChatSideBtn">
           <span>＋ Percakapan Baru</span>
@@ -740,8 +781,21 @@
 
     <!-- Stage -->
     <section class="stage" id="stage">
-      <canvas id="vortex"></canvas>
-      <main><div id="chat"></div></main>
+      <main><canvas id="vortex"></canvas><div id="chat"></div></main>
+
+      <section class="trace" id="trace" aria-label="Reasoning trace">
+        <div class="trace-box">
+          <div class="trace-head">
+            <div class="trace-tabs"><span class="trace-tab">reasoning_trace.log</span><span class="trace-sub">chain-of-thought · langkah AI baris demi baris</span></div>
+            <div class="trace-btns">
+              <span class="trace-live off" id="traceBadge">STANDBY</span>
+              <button class="tbtn" id="traceClear" type="button">CLEAR</button>
+              <button class="tbtn" id="traceToggle" type="button">HIDE</button>
+            </div>
+          </div>
+          <div class="trace-body" id="traceBody" role="log" aria-live="off"></div>
+        </div>
+      </section>
 
       <div class="composer-wrap">
         <div class="composer-in">
@@ -763,7 +817,7 @@
     <!-- Right rail -->
     <aside class="rail" aria-label="Panel telemetri">
       <div class="hud">
-        <div class="panel-title" style="padding:0 0 4px;"><span>Evidence Matrix</span><span class="tag">REPLY HASH</span></div>
+        <div class="panel-title" style="padding:0 0 4px;" title="Ilustrasi visual self-attention: bobot diturunkan dari kata-kata terakhir, bukan bobot asli model"><span>Attention Matrix</span><span class="tag">TRANSFORMER</span></div>
         <canvas id="matrix"></canvas>
       </div>
       <div class="hud">
@@ -771,22 +825,17 @@
         <canvas id="flow"></canvas>
       </div>
       <div class="hud">
+        <div class="panel-title" style="padding:0 0 4px;" title="Perkiraan token (karakter ÷ 4)"><span>Context Window Depth</span><span class="tag">TOKENS ≈</span></div>
+        <canvas id="depth"></canvas>
+        <div class="depth-foot"><span>INPUT <b id="dpIn">0</b></span><span>MEMORY/OUT <b id="dpOut">0</b></span></div>
+      </div>
+      <div class="hud" style="flex:1;">
         <div class="panel-title" style="padding:0 0 4px;"><span>Context Gauge</span><span class="tag">WINDOW</span></div>
         <canvas id="gauge"></canvas>
         <div class="kv">
           <div><span>MSGS</span><b id="kvMsgs">0</b></div>
           <div><span>LATENCY</span><b id="kvLat">—</b></div>
           <div><span>REPLY</span><b id="kvLen">0</b></div>
-        </div>
-      </div>
-      <div class="hud" style="flex:1;">
-        <div class="panel-title" style="padding:0 0 4px;"><span>Handoffs</span><span class="tag">PIPELINE</span></div>
-        <div class="lines">
-          <div class="line"><div class="line-l"><span>Input</span><span id="hv0">0%</span></div><div class="line-t"><div class="line-f" id="hf0"></div></div></div>
-          <div class="line"><div class="line-l"><span>Gemini</span><span id="hv1">0%</span></div><div class="line-t"><div class="line-f" id="hf1"></div></div></div>
-          <div class="line"><div class="line-l"><span>Stream</span><span id="hv2">0%</span></div><div class="line-t"><div class="line-f" id="hf2"></div></div></div>
-          <div class="line"><div class="line-l"><span>Render</span><span id="hv3">0%</span></div><div class="line-t"><div class="line-f" id="hf3"></div></div></div>
-          <div class="line"><div class="line-l"><span>SQLite</span><span id="hv4">0%</span></div><div class="line-t"><div class="line-f" id="hf4"></div></div></div>
         </div>
       </div>
     </aside>
@@ -832,6 +881,7 @@ const tele = {
   cpsHist: new Array(32).fill(0),
   sparks: Array.from({ length: 6 }, () => new Array(22).fill(0.15)),
   pulse: 0,               // 0..1, bumped on activity (drives vortex energy)
+  intent: null, model: "", http: "", guard: "SAFE",
 };
 
 /* ---------- Palette / theme ---------- */
@@ -990,7 +1040,7 @@ async function selectConversation(id) {
       showWelcome();
     } else {
       for (const m of history) {
-        const b = addMessage(m.role, m.content);
+        const b = addMessage(m.role, m.content, m.role === "user" ? detectIntent(m.content).k : "");
         if (m.role === "assistant") { b.classList.add("md"); b.innerHTML = renderMD(m.content); }
       }
       scrollDown();
@@ -1032,7 +1082,7 @@ function showWelcome() {
   chat.innerHTML = `
     <div class="welcome">
       <div class="w-head">
-        <div class="w-badge"><i></i>SIGNAL CORE ONLINE</div>
+        <div class="w-badge"><i></i>NEURAL CORE ONLINE</div>
         <h2>Halo, ada yang bisa <em>NOVA</em> bantu hari ini?</h2>
         <p>Tanyakan seputar pemrograman, arsitektur cloud, analisis data, atau mulai diskusi baru. Semua riwayat tersimpan otomatis.</p>
       </div>
@@ -1050,7 +1100,7 @@ function showWelcome() {
   });
 }
 
-function addMessage(role, content = "") {
+function addMessage(role, content = "", intentLabel = "") {
   chat.querySelector(".welcome")?.remove();
   stage.classList.add("has-msgs");
   const isUser = role === "user";
@@ -1058,7 +1108,7 @@ function addMessage(role, content = "") {
   const el = document.createElement("div");
   el.className = `msg-row ${isUser ? "user" : "bot"}`;
   el.innerHTML = `<div class="avatar">${isUser ? "YOU" : "AI"}</div>
-    <div class="msg-body"><div class="msg-meta"><b>${isUser ? "OPERATOR" : "NOVA"}</b><span>MSG ${n}</span></div><div class="bubble"></div></div>`;
+    <div class="msg-body"><div class="msg-meta"><b>${isUser ? "OPERATOR" : "NOVA"}</b><span>MSG ${n}</span>${intentLabel ? `<span class="intent">INTENT ${intentLabel}</span>` : ""}</div><div class="bubble"></div></div>`;
   const bubble = el.querySelector(".bubble");
   if (isUser) bubble.textContent = content;
   chat.appendChild(el);
@@ -1083,26 +1133,96 @@ function startNewChat() {
   input.focus();
 }
 
-/* ---------- Pipeline state (status badge, steps, ribbon) ---------- */
+/* ---------- Intent detection (heuristik lokal, tanpa panggilan API) ---------- */
+const INTENTS = [
+  { k: "CODING", re: /\b(kode|code|coding|script|function|fungsi|bug|error|debug|javascript|typescript|python|java|php|sql|sqlite|html|css|react|node|nodejs|api|query|regex|algoritma|compile|git|docker|crud|endpoint|framework|library)\b|```|=>/gi },
+  { k: "ANALYSIS", re: /\b(analisis|analisa|bandingkan|perbandingan|perbedaan|beda|vs|kelebihan|kekurangan|evaluasi|statistik|data|tren|insight|strategi|review|arsitektur|dampak)\b/gi },
+  { k: "EXPLAIN", re: /\b(jelaskan|jelasin|apa itu|apa yang dimaksud|bagaimana|gimana|kenapa|mengapa|cara kerja|definisi|arti|maksud)\b/gi },
+  { k: "WRITING", re: /\b(tulis|tuliskan|rangkum|ringkas|parafrase|artikel|esai|caption|cerita|puisi|surat|email|draft|proposal)\b/gi },
+  { k: "MATH", re: /\b(hitung|berapa|persamaan|rumus|integral|turunan|probabilitas|matriks|akar)\b|\d\s*[+\-*/^×÷]\s*\d/gi },
+  { k: "TRANSLATE", re: /\b(terjemah\w*|translate|artikan)\b/gi },
+];
+function detectIntent(text) {
+  let best = null;
+  for (const it of INTENTS) {
+    const n = (String(text).match(it.re) || []).length;
+    if (n > 0 && (!best || n > best.n)) best = { k: it.k, n };
+  }
+  if (!best) return { k: "CHAT", conf: 64 };
+  return { k: best.k, conf: Math.min(98, 62 + best.n * 13) };
+}
+
+/* ---------- Pipeline: PARSER → RAG → REASONER → TOOLS → GUARD → SYNTH ---------- */
+const PIPE_N = 6;
+let pipeCur = -1, pipeTimers = [];
+function pipeClearTimers() { pipeTimers.forEach(clearTimeout); pipeTimers = []; }
+function pipeShow(i) {
+  pipeCur = i;
+  for (let k = 0; k < PIPE_N; k++) { const c = $("#rc" + k); c.classList.toggle("hl", k === i); c.classList.toggle("done", k < i); }
+}
+function pipeStop() {
+  pipeClearTimers(); pipeCur = -1;
+  for (let k = 0; k < PIPE_N; k++) $("#rc" + k).classList.remove("hl", "done");
+}
+function pipeRun(to, step) {            // nyalakan bergantian kiri → kanan sampai kartu `to`
+  pipeClearTimers();
+  let i = pipeCur;
+  const go = () => { if (i >= to) return; i++; pipeShow(i); if (i < to) pipeTimers.push(setTimeout(go, step)); };
+  go();
+}
+function pipeFinish() {
+  pipeClearTimers(); pipeCur = PIPE_N;
+  for (let k = 0; k < PIPE_N; k++) { const c = $("#rc" + k); c.classList.remove("hl"); c.classList.add("done"); }
+}
+
+/* ---------- Pipeline state (status badge, steps, core) ---------- */
 let doneTimer = null;
 function setPhase(p) {
   tele.phase = p;
   clearTimeout(doneTimer);
+  const map = { idle: ["IDLE", "idle", 0], think: ["THINKING", "busy", 1], stream: ["STREAMING", "busy", 2], done: ["DELIVERED", "idle", 3], err: ["ERROR", "err", 0] };
+  const [label, s, step] = map[p];
   const badge = $("#status");
-  const map = { idle: ["IDLE", "idle", 0, "STANDBY"], think: ["THINKING", "busy", 1, "REASONING"], stream: ["STREAMING", "busy", 2, "COMPOSING"], done: ["DELIVERED", "idle", 3, "DELIVERED"], err: ["ERROR", "err", 0, "FAULT"] };
-  const [label, s, step, rv] = map[p];
   badge.textContent = label; badge.dataset.s = s;
   for (let i = 0; i < 4; i++) $("#st" + i).classList.toggle("on", i === step);
-  $("#rt5").textContent = p === "idle" ? "IDLE" : p === "err" ? "ERR" : "LIVE";
-  $("#rv5").textContent = rv;
-  for (let i = 0; i < 6; i++) $("#rc" + i).classList.toggle("hl", i === 2 || (p === "think" && i === 1) || (p === "stream" && i === 3));
-  if (p === "done") doneTimer = setTimeout(() => setPhase("idle"), 1800);
+  const active = p === "think" || p === "stream";
+  stage.classList.toggle("live", active);
+  const tb = $("#traceBadge");
+  tb.textContent = p === "think" ? "THINKING" : p === "stream" ? "STREAMING" : "STANDBY";
+  tb.classList.toggle("off", !active);
+  if (p === "idle" || p === "err") pipeStop();
+  if (p === "done") { pipeFinish(); doneTimer = setTimeout(() => setPhase("idle"), 1800); }
+}
+
+/* ---------- Reasoning trace (langkah AI baris demi baris) ---------- */
+const traceBody = $("#traceBody");
+let traceN = 0, traceT0 = 0;
+function trace(kind, text) {
+  traceN++;
+  const t = traceT0 ? "+" + ((performance.now() - traceT0) / 1000).toFixed(2) + "s" : "idle";
+  const row = document.createElement("div");
+  row.className = "tl k-" + kind.toLowerCase();
+  row.innerHTML = `<span class="tn">${String(traceN % 100).padStart(2, "0")}</span><span class="tt">${t}</span><span class="tk">${kind}</span><span class="tm"></span>`;
+  row.querySelector(".tm").textContent = text;
+  traceBody.querySelector(".tl.active")?.classList.remove("active");
+  row.classList.add("active");
+  traceBody.appendChild(row);
+  while (traceBody.childElementCount > 120) traceBody.removeChild(traceBody.firstElementChild);
+  traceBody.scrollTop = traceBody.scrollHeight;
+}
+function setTraceCollapsed(c, save) {
+  $("#trace").classList.toggle("collapsed", c);
+  $("#traceToggle").textContent = c ? "SHOW" : "HIDE";
+  if (save) { try { localStorage.setItem("nova-trace", c ? "0" : "1"); } catch {} }
 }
 
 /* ---------- Send message ---------- */
 async function send(text) {
   text = (text || "").trim();
   if (!text || busy) return;
+
+  const intent = detectIntent(text);
+  tele.intent = intent; tele.model = ""; tele.http = ""; tele.guard = "SAFE";
 
   if (!currentConvId) {
     currentConvId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -1111,7 +1231,7 @@ async function send(text) {
     } catch {}
   }
 
-  addMessage("user", text);
+  addMessage("user", text, intent.k);
   history.push({ role: "user", content: text });
   input.value = ""; autoGrow();
 
@@ -1119,8 +1239,14 @@ async function send(text) {
   bubble.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
   setBusy(true);
   controller = new AbortController();
-  tele.t0 = performance.now(); tele.latency = 0; tele.chars = 0; tele.replyLen = 0;
+  tele.t0 = performance.now(); tele.latency = 0; tele.chars = 0; tele.replyLen = 0; tele.replyText = "";
+  traceT0 = tele.t0;
   setPhase("think");
+  pipeStop(); pipeRun(2, 200);           // PARSER → RAG → REASONER
+  const ctxTok = Math.round(history.reduce((a, m) => a + m.content.length, 0) / 4);
+  trace("PARSE", `intent=${intent.k} conf=${intent.conf}% · ${text.length} ch`);
+  trace("CTX", `window=${Math.min(history.length, CTX_LIMIT)}/${CTX_LIMIT} pesan · ≈${ctxTok} tok`);
+  trace("API", "POST /api/chat (stream)");
 
   let full = "";
   try {
@@ -1130,6 +1256,7 @@ async function send(text) {
       body: JSON.stringify({ conversationId: currentConvId, messages: history }),
       signal: controller.signal,
     });
+    tele.http = String(res.status);
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -1142,44 +1269,87 @@ async function send(text) {
     const usedModel = res.headers.get("X-Model");
     if (usedModel) {
       const tries = Number(res.headers.get("X-Attempts") || 1);
-      $("#rt2").textContent = usedModel.replace(/^gemini-/, "").toUpperCase();
-      $("#rt2").title = `Model: ${usedModel} · percobaan ke-${tries}` + (tries > 1 ? ` (${tries - 1} model gagal/sibuk dilewati)` : "");
+      const note = tries > 1 ? ` (${tries - 1} model gagal/sibuk dilewati)` : "";
+      tele.model = usedModel.replace(/^gemini-/, "");
+      $("#rt2").textContent = tele.model.toUpperCase();
+      $("#rt2").title = `Model: ${usedModel} · percobaan ke-${tries}${note}`;
       $("#rt2").classList.toggle("warn", tries > 1);
+      trace("MODEL", `${usedModel} · percobaan ke-${tries}${note}`);
     }
 
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     bubble.classList.add("md");
+
     // Render markdown paling sering tiap 80ms (parse + highlight ulang seluruh teks itu mahal)
     let live = true, paintTimer = null, lastPaint = 0;
     const paint = () => { paintTimer = null; lastPaint = performance.now(); if (!live) return; bubble.innerHTML = renderMD(full) + '<span class="cursor"></span>'; scrollDown(); };
     const schedulePaint = () => { if (paintTimer) return; paintTimer = setTimeout(paint, Math.max(0, 80 - (performance.now() - lastPaint))); };
+
+    // Stream: [\u0001 ringkasan reasoning \u0002] jawaban
+    let mode = "answer", thoughtBuf = "", gotThought = false, gotAnswer = false;
+    const emitThought = (l) => {
+      l = l.replace(/\*\*/g, "").replace(/^#+\s*/, "").trim();
+      if (l) { gotThought = true; trace("THINK", l); }
+    };
+    const flushThought = (final) => {
+      let idx;
+      while ((idx = thoughtBuf.indexOf("\n")) !== -1) { emitThought(thoughtBuf.slice(0, idx)); thoughtBuf = thoughtBuf.slice(idx + 1); }
+      while (thoughtBuf.length > 180) {
+        let cut = thoughtBuf.lastIndexOf(" ", 180); if (cut < 60) cut = 180;
+        emitThought(thoughtBuf.slice(0, cut)); thoughtBuf = thoughtBuf.slice(cut).trimStart();
+      }
+      if (final && thoughtBuf.trim()) { emitThought(thoughtBuf); thoughtBuf = ""; }
+    };
+    const onAnswerStart = () => {
+      if (gotAnswer) return;
+      gotAnswer = true;
+      if (!gotThought) trace("THINK", "model tidak mengirim ringkasan reasoning — langsung menjawab");
+      trace("STREAM", `token jawaban pertama · ${Math.round(performance.now() - tele.t0)} ms`);
+      setPhase("stream");
+      pipeRun(5, 120);                    // TOOLS → GUARD → SYNTH
+    };
+    const handleText = (t) => {
+      if (mode === "think") { thoughtBuf += t; flushThought(false); tele.pulse = 1; return; }
+      onAnswerStart();
+      full += t;
+      tele.chars += t.length; tele.replyLen = full.length; tele.replyText = full; tele.pulse = 1;
+      schedulePaint();
+    };
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const piece = dec.decode(value, { stream: true });
-        if (!tele.latency) { tele.latency = Math.round(performance.now() - tele.t0); setPhase("stream"); }
-        full += piece;
-        tele.chars += piece.length; tele.replyLen = full.length; tele.replyText = full; tele.pulse = 1;
-        schedulePaint();
+        if (!tele.latency && piece) tele.latency = Math.round(performance.now() - tele.t0);
+        for (const part of piece.split(/([\u0001\u0002])/)) {
+          if (part === "\u0001") { mode = "think"; continue; }
+          if (part === "\u0002") { mode = "answer"; flushThought(true); continue; }
+          if (part) handleText(part);
+        }
       }
     } finally {
       live = false;
       clearTimeout(paintTimer);
     }
+    flushThought(true);
     full += dec.decode();
     bubble.innerHTML = renderMD(full || "_(tidak ada balasan)_");
     history.push({ role: "assistant", content: full });
     tele.replyText = full; tele.replyLen = full.length;
+    const secs = Math.max(0.1, (performance.now() - tele.t0) / 1000);
+    trace("STREAM", `selesai · ${full.length} ch · ${secs.toFixed(1)} s · ${Math.round(full.length / secs)} c/s`);
     triggerShockwave();
     setPhase("done");
     await loadConversations();
+    trace("SAVE", `tersimpan di database · ${conversations.length} percakapan`);
   } catch (err) {
     if (err.name === "AbortError") {
       bubble.classList.add("md");
       bubble.innerHTML = renderMD(full ? full + "\n\n_⏹ dihentikan_" : "_⏹ dihentikan_");
       setPhase("idle");
+      trace("SYS", "dihentikan oleh pengguna");
       if (full) {
         history.push({ role: "assistant", content: full });
         fetch("/api/history", {
@@ -1194,10 +1364,13 @@ async function send(text) {
       bubble.classList.add("err");
       bubble.textContent = "⚠ " + err.message;
       history.pop();
+      tele.guard = "FAULT"; tele.http = tele.http || "ERR";
       setPhase("err");
+      trace("ERR", err.message);
       doneTimer = setTimeout(() => setPhase("idle"), 3500);
     }
   } finally {
+    traceT0 = 0;
     setBusy(false);
     controller = null;
     scrollDown();
@@ -1210,6 +1383,12 @@ form.addEventListener("submit", (e) => { e.preventDefault(); if (busy) { control
 input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
 function autoGrow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 170) + "px"; $("#charCount").textContent = input.value.length; }
 input.addEventListener("input", autoGrow);
+input.addEventListener("input", () => {            // intent terdeteksi langsung saat mengetik
+  if (busy) return;
+  tele.intent = input.value.trim().length > 2 ? detectIntent(input.value) : null;
+});
+$("#traceClear").onclick = () => { traceBody.innerHTML = ""; traceN = 0; trace("SYS", "trace dibersihkan"); };
+$("#traceToggle").onclick = () => setTraceCollapsed(!$("#trace").classList.contains("collapsed"), true);
 $("#newChatSideBtn").onclick = () => { startNewChat(); if (window.matchMedia("(max-width: 960px)").matches) toggleSidebar(false); };
 
 /* ============================================================
@@ -1219,6 +1398,7 @@ const vcv = $("#vortex"), vctx = vcv.getContext("2d");
 const mcv = $("#matrix"), mctx = mcv.getContext("2d");
 const fcv = $("#flow"), fctx = fcv.getContext("2d");
 const gcv = $("#gauge"), gctx = gcv.getContext("2d");
+const dcv = $("#depth"), dctx = dcv.getContext("2d");
 
 function fitCanvas(cv) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1303,20 +1483,27 @@ function pill(ctx, dpr, ax, ay, bx, by, label) {
 }
 
 let phase = 0, speed = 0.8, lastT = 0;
+let pull = 1, suck = 0, lastWave = 0;
+const STREAKS = Array.from({ length: 70 }, () => ({ ang: Math.random() * Math.PI * 2, t: Math.random(), sp: 0.012 + Math.random() * 0.02 }));
 function drawVortex(ts) {
   const { w, h, dpr } = fitCanvas(vcv);
   vctx.clearRect(0, 0, w, h);
   if (w < 10 || h < 10) return;
 
   const welcome = !stage.classList.contains("has-msgs");
-  const target = REDUCED ? 0.05 : (busy ? 2.7 : (welcome ? 0.9 : 0.6)) + tele.pulse * 0.8;
+  const thinking = tele.phase === "think", streaming = tele.phase === "stream";
+  // idle: berputar tenang · thinking: menyedot partikel kencang · menjawab: memancarkan gelombang
+  const target = REDUCED ? 0.05 : (thinking ? 3.4 : streaming ? 2.2 : (welcome ? 0.9 : 0.6)) + tele.pulse * 0.8;
   speed += (target - speed) * 0.05;
   phase += 0.015 * speed;
   tele.pulse *= 0.96;
+  pull += ((thinking ? 0.62 : 1) - pull) * 0.06;
+  suck += ((thinking ? 1 : 0) - suck) * 0.08;
+  if (streaming && ts - lastWave > 650) { lastWave = ts; shocks.push({ r: 22, a: 0.85, c: "a" }); }
 
   const cx = w * 0.5;
-  const cy = welcome ? h * 0.3 : h * 0.5;
-  const R = welcome ? Math.min(w * 0.2, h * 0.24) : Math.min(w * 0.26, h * 0.3);
+  const cy = welcome ? h * 0.27 : h * 0.5;
+  const R = welcome ? Math.min(w * 0.2, h * 0.21) : Math.min(w * 0.26, h * 0.3);
   const r = R * 0.54;
   const tilt = 1.07 + Math.sin(phase * 0.55) * 0.065;
   const wob = Math.cos(phase * 0.4) * 0.055;
@@ -1346,11 +1533,11 @@ function drawVortex(ts) {
   }
 
   // filaments
-  const trail = busy ? 4.2 : 3.1;
+  const trail = tele.phase === "think" ? 5.6 : busy ? 4.2 : 3.1;
   for (let i = 0; i < FILAMENTS.length; i++) {
     const f = FILAMENTS[i];
     f.u += f.su * speed; f.v += f.sv * speed;
-    const rr = r * f.layer;
+    const rr = r * f.layer * pull;
     const head = project(f.u, f.v, cx, cy, R * breathe, rr, tilt, wob);
     const mid = project(f.u - f.su * trail * 0.5, f.v - f.sv * trail * 0.5, cx, cy, R * breathe, rr, tilt, wob);
     const tail = project(f.u - f.su * trail, f.v - f.sv * trail, cx, cy, R * breathe, rr, tilt, wob);
@@ -1360,6 +1547,23 @@ function drawVortex(ts) {
       : f.hot ? `rgba(${palette.rgbHot},${a * 0.85})` : `rgba(${palette.rgbA},${a * 0.65})`;
     vctx.lineWidth = f.size * dpr;
     vctx.beginPath(); vctx.moveTo(tail.x, tail.y); vctx.quadraticCurveTo(mid.x, mid.y, head.x, head.y); vctx.stroke();
+  }
+
+  // partikel tersedot ke inti saat THINKING
+  if (suck > 0.03) {
+    for (const st of STREAKS) {
+      st.t += st.sp * (1 + speed * 0.6);
+      if (st.t >= 1) { st.t = 0; st.ang = Math.random() * Math.PI * 2; }
+      const e = st.t * st.t;
+      const rad = (1 - e) * R * 2.0 + R * 0.12;
+      const rad2 = rad + R * 0.22 * (1 - e);
+      vctx.strokeStyle = `rgba(${palette.rgbHot},${Math.min(0.9, 0.15 + e * 0.8) * suck})`;
+      vctx.lineWidth = (0.8 + e * 1.4) * dpr;
+      vctx.beginPath();
+      vctx.moveTo(cx + Math.cos(st.ang) * rad2 * 1.32, cy + Math.sin(st.ang) * rad2 * 0.62);
+      vctx.lineTo(cx + Math.cos(st.ang) * rad * 1.32, cy + Math.sin(st.ang) * rad * 0.62);
+      vctx.stroke();
+    }
   }
 
   // X-pinch flares
@@ -1397,70 +1601,85 @@ function drawVortex(ts) {
 
   vctx.font = `700 ${8.5 * dpr}px "JetBrains Mono", monospace`;
   vctx.fillStyle = "rgba(255,240,252,.75)"; vctx.textAlign = "center";
-  vctx.fillText("SIGNAL CORE", cx, cy + r * 0.49); vctx.textAlign = "left";
+  vctx.fillText("NOVA NEURAL CORE", cx, cy + r * 0.49); vctx.textAlign = "left";
 
   for (let s = shocks.length - 1; s >= 0; s--) {
     const sw = shocks[s]; sw.r += 7 * dpr; sw.a -= 0.024;
     if (sw.a <= 0) { shocks.splice(s, 1); continue; }
-    vctx.strokeStyle = `rgba(0,255,136,${sw.a})`; vctx.lineWidth = 2.4 * dpr;
+    vctx.strokeStyle = sw.c === "a" ? `rgba(${palette.rgbA},${sw.a})` : `rgba(0,255,136,${sw.a})`; vctx.lineWidth = 2.4 * dpr;
     vctx.beginPath(); vctx.ellipse(cx, cy, sw.r * 1.35, sw.r * 0.65, 0, 0, 7); vctx.stroke();
   }
   if (flash > 0) flash = Math.max(0, flash - 0.03);
 
-  // HUD callouts only on welcome screen, wide viewport
-  if (welcome && w > 700 * dpr) {
+  // HUD callouts (INTENT / MODEL / MEMORY) + pill tags
+  if (w > 700 * dpr) {
     const bw = 158 * dpr, bh = 36 * dpr;
+    const it = tele.intent;
     const a1 = project(2.65 + phase * 0.18, 0.5, cx, cy, R * 0.78, r * 0.5, tilt, wob);
-    callout(vctx, dpr, a1.x, a1.y, cx - R * 1.75, cy - R * 0.45, bw, bh, "SESSION / ID", currentConvId ? currentConvId.slice(-12) : "new · unsaved");
+    callout(vctx, dpr, a1.x, a1.y, cx - R * 1.75, cy - R * 0.45, bw, bh,
+      it ? "INTENT / DETECTED" : "INTENT / AWAITING", it ? `${it.k} · ${it.conf}%` : "ketik atau kirim pesan…");
     const a2 = project(0.85 + phase * 0.18, -0.7, cx, cy, R * 0.85, r * 0.55, tilt, wob);
-    callout(vctx, dpr, a2.x, a2.y, cx + R * 0.55, cy - R * 0.95, bw, bh, "MODEL / GEMINI", "3.8 flash · stream sse");
+    callout(vctx, dpr, a2.x, a2.y, cx + R * 0.55, cy - R * 0.95, bw, bh,
+      "MODEL / GEMINI", `${tele.model || "flash"} · ${tele.latency ? tele.latency + "ms" : "sse"}`);
     const a3 = project(-0.8 + phase * 0.18, 1.1, cx, cy, R * 0.8, r * 0.5, tilt, wob);
     callout(vctx, dpr, a3.x, a3.y, cx + R * 0.62, cy + R * 0.5, bw, bh, "MEMORY / SQLITE", `${conversations.length} conv · crud ok`);
     const pA = project(2.2, 1.5, cx, cy, R * 0.75, r * 0.5, tilt, wob);
-    pill(vctx, dpr, pA.x, pA.y, cx - R * 1.2, cy + R * 0.3, busy ? "HASHING" : "STANDBY");
+    pill(vctx, dpr, pA.x, pA.y, cx - R * 1.2, cy + R * 0.3, thinking ? "THINKING" : streaming ? "RESPONDING" : "IDLE");
     const pB = project(1.5, 1.9, cx, cy, R * 0.85, r * 0.6, tilt, wob);
     pill(vctx, dpr, pB.x, pB.y, cx - R * 0.55, cy + R * 0.72, `ctx ${history.length}/${CTX_LIMIT}`);
   }
 }
 
-/* ---- Evidence matrix (hash of latest reply → 8×8 nibbles) ---- */
-function hashNibbles(str) {
-  const out = new Array(64);
-  let h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677);
+/* ---- Transformer attention matrix (ilustrasi self-attention dari kata-kata terakhir) ---- */
+const hcache = new Map();
+function h01(str) {
+  let v = hcache.get(str);
+  if (v === undefined) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    v = ((h >>> 0) % 1000) / 1000;
+    if (hcache.size > 600) hcache.clear();
+    hcache.set(str, v);
   }
-  for (let i = 0; i < 64; i++) {
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-    out[i] = (h1 ^ h2) >>> 28;
-  }
-  return out;
+  return v;
 }
-let matrixCache = { key: "", nibs: new Array(64).fill(0) };
+function attentionWords() {
+  let src = "";
+  if (busy) src = tele.phase === "stream" && tele.replyText ? tele.replyText : (history.filter((m) => m.role === "user").slice(-1)[0]?.content || "");
+  else src = input.value.trim() || tele.replyText || (history.slice(-1)[0]?.content || "");
+  const w = src.replace(/[`*#_>|]/g, " ").split(/\s+/).filter(Boolean).slice(-8).map((x) => x.slice(0, 14));
+  return w.length ? w : ["Halo", "NOVA", "siap", "membantu", "pertanyaan", "kamu", "hari", "ini"];
+}
+let attn = { t: -999, words: [] };
 let scanIdx = 0;
 function drawMatrix(ts) {
   const { w, h, dpr } = fitCanvas(mcv);
   if (!w) return;
   mctx.clearRect(0, 0, w, h);
-  const key = tele.replyText.length + ":" + tele.replyText.slice(-12);
-  if (key !== matrixCache.key) { matrixCache = { key, nibs: tele.replyText ? hashNibbles(tele.replyText) : new Array(64).fill(0) }; }
-  const cw = w / 8, ch = h / 8, pad = 1.5 * dpr;
-  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
-    const idx = r * 8 + c;
-    const raw = matrixCache.nibs[idx];
-    const shift = Math.floor((Math.sin(ts * 0.004 + r * 0.7 + c * 0.5) + 1) * 2.5);
-    const val = (raw + shift) % 16;
-    if (idx === scanIdx) mctx.fillStyle = "#fff";
-    else if (val >= 12) mctx.fillStyle = palette.accent;
-    else if (val >= 8) mctx.fillStyle = palette.soft;
-    else if (val >= 4) mctx.fillStyle = `rgba(${palette.rgbA},.34)`;
-    else mctx.fillStyle = "#140f1d";
-    const x = c * cw + pad, y = r * ch + pad, bw = Math.max(2, cw - pad * 2), bh = Math.max(2, ch - pad * 2);
-    mctx.fillRect(x, y, bw, bh);
-    if (idx === scanIdx) { mctx.strokeStyle = palette.accent; mctx.lineWidth = 1.5 * dpr; mctx.strokeRect(x - .5 * dpr, y - .5 * dpr, bw + dpr, bh + dpr); }
+  if (ts - attn.t > 160) { attn.t = ts; attn.words = attentionWords(); }
+  const words = attn.words, n = 8;
+  const labW = 36 * dpr, cw = (w - labW) / n, ch = h / n, pad = 1.2 * dpr;
+  const rate = busy ? 0.02 : 0.004;               // berkedip cepat saat AI bekerja
+  const qRow = scanIdx % n;
+  mctx.font = `600 ${7 * dpr}px "JetBrains Mono", monospace`;
+  mctx.textBaseline = "middle";
+  for (let r = 0; r < n; r++) {
+    const wr = words[r];
+    mctx.fillStyle = r === qRow ? palette.accent : "#594d6b";
+    if (wr) mctx.fillText(wr.slice(0, 5), 2 * dpr, r * ch + ch / 2);
+    for (let c = 0; c < n; c++) {
+      let a = 0;                                      // causal mask: hanya c <= r
+      if (wr && words[c] && c <= r) {
+        const rec = Math.exp(-(r - c) / 2.6);
+        const base = Math.pow(h01(wr + "|" + words[c]), 2.2) * 0.65 + rec * 0.5 + (c === r ? 0.25 : 0);
+        a = Math.min(1, base * (0.72 + 0.28 * Math.sin(ts * rate + r * 1.7 + c * 2.3 + h01(words[c]) * 6)));
+      }
+      mctx.fillStyle = a > 0.78 ? "#fff" : a > 0.55 ? palette.accent : a > 0.35 ? palette.soft : a > 0.15 ? `rgba(${palette.rgbA},.34)` : (c > r ? "#0d0a14" : "#140f1d");
+      mctx.fillRect(labW + c * cw + pad, r * ch + pad, Math.max(2, cw - pad * 2), Math.max(2, ch - pad * 2));
+    }
   }
+  mctx.strokeStyle = palette.accent; mctx.lineWidth = 1.2 * dpr;
+  mctx.strokeRect(labW, qRow * ch + 0.5 * dpr, w - labW, ch - dpr);
 }
 
 /* ---- Stream flow bars ---- */
@@ -1502,6 +1721,44 @@ function drawGauge(ts) {
   gctx.fillText(history.length < 10 ? "LIGHT" : history.length < 22 ? "MEDIUM" : "FULL", cx, cy + 14 * dpr);
 }
 
+/* ---- Context window depth: sisi kiri = input prompt, sisi kanan = memory/output tokens ---- */
+let depthIn = 0, depthOut = 0;
+function tokenStats() {
+  let i = 0, o = 0;
+  for (const m of history) { if (m.role === "user") i += m.content.length; else o += m.content.length; }
+  if (tele.phase === "stream") o += tele.replyLen;
+  return { inTok: Math.round(i / 4), outTok: Math.round(o / 4) };
+}
+function drawDepth(ts) {
+  const { w, h, dpr } = fitCanvas(dcv);
+  if (!w) return;
+  dctx.clearRect(0, 0, w, h);
+  const st = tokenStats();
+  depthIn += (st.inTok - depthIn) * 0.1;
+  depthOut += (st.outTok - depthOut) * 0.1;
+  const scale = Math.max(120, depthIn, depthOut) * 1.15;
+  const nIn = Math.max(0.1, depthIn / scale), nOut = Math.max(0.1, depthOut / scale);
+  const bottom = h * 0.92;
+  const midX = w * (0.5 + Math.sin(ts * 0.0025) * 0.05 + (busy ? Math.cos(ts * 0.011) * 0.03 : 0));
+  const leftTop = bottom - (bottom - h * 0.12) * nIn;
+  const rightTop = bottom - (bottom - h * 0.12) * nOut;
+  dctx.strokeStyle = "rgba(255,255,255,.06)"; dctx.lineWidth = dpr;
+  for (let g = 1; g <= 3; g++) { dctx.beginPath(); dctx.moveTo(0, h * g / 4); dctx.lineTo(w, h * g / 4); dctx.stroke(); }
+  dctx.beginPath(); dctx.moveTo(0, leftTop); dctx.lineTo(midX, bottom); dctx.lineTo(0, bottom); dctx.closePath();
+  dctx.fillStyle = "rgba(157,143,179,.22)"; dctx.fill();
+  dctx.strokeStyle = "#9d8fb3"; dctx.lineWidth = 1.4 * dpr;
+  dctx.beginPath(); dctx.moveTo(0, leftTop); dctx.lineTo(midX, bottom); dctx.stroke();
+  dctx.beginPath(); dctx.moveTo(midX, bottom); dctx.lineTo(w, rightTop); dctx.lineTo(w, bottom); dctx.closePath();
+  dctx.fillStyle = `rgba(${palette.rgbA},.24)`; dctx.fill();
+  dctx.strokeStyle = palette.accent; dctx.lineWidth = 1.4 * dpr;
+  dctx.beginPath(); dctx.moveTo(midX, bottom); dctx.lineTo(w, rightTop); dctx.stroke();
+  dctx.fillStyle = "#fff"; dctx.beginPath(); dctx.arc(midX, bottom, (busy ? 2.6 + Math.sin(ts * 0.012) : 2) * dpr, 0, 7); dctx.fill();
+  dctx.font = `700 ${7.5 * dpr}px "JetBrains Mono", monospace`; dctx.textBaseline = "top";
+  dctx.fillStyle = "#9d8fb3"; dctx.textAlign = "left"; dctx.fillText("INPUT", 3 * dpr, 2 * dpr);
+  dctx.fillStyle = palette.accent; dctx.textAlign = "right"; dctx.fillText("MEMORY / OUT", w - 3 * dpr, 2 * dpr);
+  dctx.textAlign = "left";
+}
+
 /* ---- Sparklines ---- */
 function spark(id, arr, color, fill) {
   const cv = document.getElementById(id);
@@ -1524,7 +1781,7 @@ let lastScan = 0;
 function frame(ts) {
   drawVortex(ts);
   if (ts - lastScan > (busy ? 70 : 280)) { lastScan = ts; scanIdx = (scanIdx + 1) % 64; }
-  if (window.matchMedia("(min-width: 1281px)").matches) { drawMatrix(ts); drawFlow(); drawGauge(ts); }
+  if (window.matchMedia("(min-width: 1281px)").matches) { drawMatrix(ts); drawFlow(); drawDepth(ts); drawGauge(ts); }
   requestAnimationFrame(frame);
 }
 
@@ -1532,48 +1789,41 @@ function frame(ts) {
 let tickN = 0;
 function tick() {
   tickN++;
-  const cps = tele.chars * 4;           // chars in last 250ms → chars/sec
+  const cps = tele.chars * 4;           // karakter dalam 250ms → karakter/detik
   tele.chars = 0;
   tele.cpsNow = tele.phase === "stream" ? cps : tele.cpsNow * 0.5;
   if (tickN % 2 === 0) { tele.cpsHist.push(Math.round(tele.cpsNow)); tele.cpsHist.shift(); }
 
   const inLen = input.value.length;
   const ctxPct = Math.min(1, history.length / CTX_LIMIT);
-  const push = (i, v) => { const a = tele.sparks[i]; a.push(Math.max(0.04, Math.min(0.96, v))); a.shift(); };
   const wob = Math.sin(tickN * 0.35);
-  push(0, inLen / 600 + 0.08);
+  const push = (i, v) => { const a = tele.sparks[i]; a.push(Math.max(0.04, Math.min(0.96, v))); a.shift(); };
+  push(0, inLen / 600 + 0.1 + (busy ? 0.3 * Math.abs(wob) : 0));
   push(1, ctxPct + 0.05);
   push(2, tele.latency ? 1 - Math.min(1, tele.latency / 4000) : 0.2 + 0.05 * wob);
-  push(3, tele.cpsNow / 160 + 0.05);
-  push(4, Math.min(1, conversations.length / 20) + 0.08);
-  push(5, busy ? 0.55 + 0.4 * wob : 0.12 + 0.03 * wob);
-  const cols = [palette.soft, palette.soft, palette.accent, palette.accent, palette.soft, busy ? palette.accent : palette.soft];
-  for (let i = 0; i < 6; i++) spark("rs" + i, tele.sparks[i], cols[i], i === 3);
+  push(3, busy ? 0.5 + 0.4 * wob : 0.12);
+  push(4, tele.guard === "FAULT" ? 0.9 : 0.35 + 0.05 * wob);
+  push(5, tele.cpsNow / 160 + 0.05);
+  const cols = [palette.soft, palette.soft, palette.accent, palette.accent, tele.guard === "FAULT" ? "#ff5470" : palette.soft, palette.accent];
+  for (let i = 0; i < 6; i++) spark("rs" + i, tele.sparks[i], cols[i], i === 5);
 
-  $("#rv0").textContent = inLen + " ch";
-  $("#rt0").textContent = inLen ? "TYPING" : "READY";
+  $("#rt0").textContent = tele.intent ? tele.intent.k : "READY";
+  $("#rv0").textContent = busy && tele.intent ? tele.intent.conf + "%" : inLen + " ch";
   $("#rt1").textContent = history.length + " / " + CTX_LIMIT;
   $("#rv1").textContent = Math.round(ctxPct * 100) + "%";
   $("#rv2").textContent = tele.latency ? tele.latency + " ms" : "— ms";
-  $("#rv3").textContent = Math.round(tele.cpsNow) + " c/s";
-  $("#rt3").textContent = tele.phase === "stream" ? "LIVE" : "SSE";
-  $("#rv4").textContent = conversations.length + " conv";
+  $("#rv3").textContent = tele.http || "—";
+  $("#rv4").textContent = tele.guard;
+  $("#rt5").textContent = tele.phase === "stream" ? "LIVE" : "IDLE";
+  $("#rv5").textContent = Math.round(tele.cpsNow) + " c/s";
 
   $("#flowTag").textContent = Math.round(tele.cpsNow) + " c/s";
   $("#kvMsgs").textContent = history.length;
   $("#kvLat").textContent = tele.latency ? tele.latency + "ms" : "—";
   $("#kvLen").textContent = tele.replyLen;
-
-  // handoff bars
-  const ph = tele.phase;
-  const lv = {
-    0: ph === "idle" ? Math.min(100, Math.round(inLen / 20)) : 100,
-    1: ph === "think" ? 85 + Math.round(10 * wob) : ph === "stream" || ph === "done" ? 100 : 0,
-    2: ph === "stream" ? Math.min(100, 30 + Math.round(tele.cpsNow / 2)) : ph === "done" ? 100 : 0,
-    3: ph === "stream" ? 70 + Math.round(15 * wob) : ph === "done" ? 100 : 0,
-    4: ph === "done" ? 100 : ph === "idle" ? Math.min(100, conversations.length * 5) : 20,
-  };
-  for (let i = 0; i < 5; i++) { $("#hf" + i).style.width = lv[i] + "%"; $("#hv" + i).textContent = lv[i] + "%"; }
+  const ts_ = tokenStats();
+  $("#dpIn").textContent = "≈" + ts_.inTok;
+  $("#dpOut").textContent = "≈" + ts_.outTok;
 }
 
 function clock() {
@@ -1585,6 +1835,9 @@ function clock() {
 /* ---------- Init ---------- */
 showWelcome();
 loadConversations();
+{ let pref = null; try { pref = localStorage.getItem("nova-trace"); } catch {}
+  setTraceCollapsed(pref ? pref === "0" : window.innerWidth < 641, false); }
+trace("SYS", "reasoning trace siap — kirim pesan untuk melihat langkah AI");
 clock(); setInterval(clock, 1000);
 tick(); setInterval(tick, 250);
 requestAnimationFrame(frame);

@@ -18,6 +18,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Cache model yang terakhir sukses + batas waktu tunggu respons awal per model
 let workingModel = null;
+
+// Minta ringkasan "thought" dari model. Jika model/API menolak parameter ini (HTTP 400),
+// otomatis dimatikan dan request diulang tanpa thinkingConfig.
+// Protokol stream ke browser: \u0001 = awal ringkasan reasoning, \u0002 = awal jawaban.
+let useThoughts = true;
 const CONNECT_TIMEOUT_MS = 8000;
 
 export default async function handler(req, res) {
@@ -90,7 +95,8 @@ export default async function handler(req, res) {
   let lastErrorDetail = "";
   let lastStatus = 502;
 
-  for (const modelName of candidateModels) {
+  for (let mi = 0; mi < candidateModels.length; mi++) {
+    const modelName = candidateModels[mi];
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
     attempts++;
     const ac = new AbortController();
@@ -106,7 +112,12 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents,
-          generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 2048 },
+          generationConfig: {
+            temperature: 0.8,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+            ...(useThoughts ? { thinkingConfig: { includeThoughts: true } } : {}),
+          },
         }),
       });
 
@@ -123,6 +134,14 @@ export default async function handler(req, res) {
       try {
         lastErrorDetail = (await resp.json())?.error?.message || "";
       } catch {}
+
+      // Parameter thinking ditolak? Matikan fitur ini dan ulangi model yang sama tanpa itu.
+      if (resp.status === 400 && useThoughts && /thinking|thought/i.test(lastErrorDetail)) {
+        useThoughts = false;
+        attempts--;
+        mi--;
+        continue;
+      }
 
       // Retry / lanjut ke model fallback jika model deprecated (404), rate-limited (429), atau server sibuk / high demand (500, 502, 503, 504)
       const isRetryable =
@@ -163,6 +182,7 @@ export default async function handler(req, res) {
   const decoder = new TextDecoder();
   let buffer = "";
   let fullReply = "";
+  let inThought = false;
 
   const processLine = (rawLine) => {
     const line = rawLine.trim();
@@ -172,7 +192,19 @@ export default async function handler(req, res) {
     try {
       const parts = JSON.parse(json)?.candidates?.[0]?.content?.parts || [];
       for (const p of parts) {
-        if (p.text) {
+        if (!p.text) continue;
+        if (p.thought) {
+          // Ringkasan reasoning: dikirim ke browser untuk Reasoning Trace, tidak disimpan ke SQLite
+          if (!inThought) {
+            res.write("\u0001");
+            inThought = true;
+          }
+          res.write(p.text);
+        } else {
+          if (inThought) {
+            res.write("\u0002");
+            inThought = false;
+          }
           fullReply += p.text;
           res.write(p.text);
         }
@@ -201,8 +233,13 @@ export default async function handler(req, res) {
       processLine(buffer);
     }
   } catch (e) {
+    if (inThought) {
+      res.write("\u0002");
+      inThought = false;
+    }
     res.write("\n\n⚠️ Koneksi terputus.");
   }
+  if (inThought) res.write("\u0002");
 
   // Simpan balasan AI ke SQLite
   try {
