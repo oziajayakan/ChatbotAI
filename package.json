@@ -11,6 +11,16 @@
   "engines": {
     "node": ">=22.x"
   },
+  "contributors": [
+    {
+      "name": "Google DeepMind Antigravity",
+      "url": "https://deepmind.google"
+    },
+    {
+      "name": "GitHub Copilot",
+      "url": "https://github.com/features/copilot"
+    }
+  ],
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
