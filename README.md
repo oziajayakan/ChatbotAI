@@ -1,6 +1,6 @@
 # NOVA — Chatbot AI Gemini + SQLite CRUD untuk Vercel
 
-Chatbot AI modern berbasis **Google Gemini API** dengan streaming balasan (Server-Sent Events), penyimpanan riwayat percakapan **Database SQLite (CRUD)**, UI Glassmorphism (Dark/Light mode), render Markdown, dan highlight kode.
+Chatbot AI modern berbasis **Google Gemini API** dengan streaming balasan (Server-Sent Events), penyimpanan riwayat percakapan **Database SQLite (CRUD)**, UI bergaya HUD neon (vortex torus animasi, ribbon telemetri real-time, palet Pink/Matrix), render Markdown, dan highlight kode.
 
 🔗 **Source Code GitHub**: [https://github.com/oziajayakan/ChatbotAI.git](https://github.com/oziajayakan/ChatbotAI.git)  
 ☕ **Dukung via Saweria**: [https://saweria.co/kokbisaya](https://saweria.co/kokbisaya)
