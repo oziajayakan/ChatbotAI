@@ -55,5 +55,5 @@ ChatbotAI/
 2. Buka dashboard **Vercel**, klik **Add New → Project**, lalu import repositori GitHub tersebut.
 3. Pada bagian **Environment Variables**, tambahkan:
    - `GEMINI_API_KEY` = API key dari Google AI Studio (`https://aistudio.google.com/apikey`)
-   - `GEMINI_MODEL` = `gemini-2.5-flash` (opsional)
+   - `GEMINI_MODEL` = `gemini-3.8-flash` (opsional, otomatis fallback ke `gemini-flash-latest`)
 4. Klik **Deploy**. Proyek langsung online! ✅

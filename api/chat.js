@@ -4,7 +4,8 @@ import { getSqlite } from "./db.js";
 // Vercel Serverless Function (Node.js) — streaming ke browser via SSE + SQLite persistence
 export const config = { maxDuration: 60 };
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"];
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -68,34 +69,50 @@ export default async function handler(req, res) {
     // Jangan gagalkan chat jika SQLite mengalami kendala I/O
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
+  const candidateModels = [...new Set([DEFAULT_MODEL, ...FALLBACK_MODELS])];
+  let upstream = null;
+  let lastErrorDetail = "";
+  let lastStatus = 502;
 
-  let upstream;
-  try {
-    upstream = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 2048 },
-      }),
-    });
-  } catch (e) {
-    return res.status(502).json({ error: "Gagal menghubungi Gemini API." });
+  for (const modelName of candidateModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents,
+          generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 2048 },
+        }),
+      });
+
+      if (resp.ok && resp.body) {
+        upstream = resp;
+        break;
+      }
+
+      lastStatus = resp.status || 502;
+      try {
+        lastErrorDetail = (await resp.json())?.error?.message || "";
+      } catch {}
+
+      // Jika error bukan karena model deprecated/404, jangan retry model lain
+      if (resp.status !== 404 && !lastErrorDetail.includes("no longer available")) {
+        break;
+      }
+    } catch {
+      lastErrorDetail = "Gagal menghubungi Gemini API.";
+    }
   }
 
-  if (!upstream.ok || !upstream.body) {
-    let detail = "";
-    try {
-      detail = (await upstream.json())?.error?.message || "";
-    } catch {}
+  if (!upstream || !upstream.ok || !upstream.body) {
     return res
-      .status(upstream.status || 502)
-      .json({ error: detail || `Gemini error (${upstream.status})` });
+      .status(lastStatus)
+      .json({ error: lastErrorDetail || `Gemini error (${lastStatus})` });
   }
 
   res.writeHead(200, {
