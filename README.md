@@ -7,6 +7,11 @@ Chatbot AI modern berbasis **Google Gemini API** dengan streaming balasan (Serve
 
 ---
 
+## Kontributor
+- **GitHub Copilot** — asisten AI yang membantu pengembangan proyek ini.
+
+---
+
 ## Fitur Utama
 - **Streaming Respons Real-time (SSE)**: Balasan AI muncul kata demi kata secara instan.
 - **Database SQLite CRUD Riwayat Chat**:
