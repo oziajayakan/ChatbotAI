@@ -6,21 +6,19 @@ export const config = { maxDuration: 60 };
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const FALLBACK_MODELS = [
+  // Rantai pendek: tiap model gagal = menambah waktu tunggu, jadi hanya simpan cadangan yang berguna
   "gemini-3.8-flash",
   "gemini-3.7-flash",
-  "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite",
   "gemini-flash-latest",
-  "gemini-flash-lite-latest",
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Cache model yang terakhir sukses + batas waktu tunggu respons awal per model
 let workingModel = null;
-const CONNECT_TIMEOUT_MS = 12000;
+const CONNECT_TIMEOUT_MS = 8000;
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -87,11 +85,14 @@ export default async function handler(req, res) {
   // Model yang terakhir berhasil dicoba lebih dulu (tetap hangat antar request di instance yang sama)
   const candidateModels = [...new Set([workingModel, DEFAULT_MODEL, ...FALLBACK_MODELS].filter(Boolean))];
   let upstream = null;
+  let usedModel = "";
+  let attempts = 0;
   let lastErrorDetail = "";
   let lastStatus = 502;
 
   for (const modelName of candidateModels) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
+    attempts++;
     const ac = new AbortController();
     const connectTimer = setTimeout(() => ac.abort(), CONNECT_TIMEOUT_MS);
     try {
@@ -113,6 +114,7 @@ export default async function handler(req, res) {
 
       if (resp.ok && resp.body) {
         upstream = resp;
+        usedModel = modelName;
         workingModel = modelName;
         break;
       }
@@ -151,6 +153,9 @@ export default async function handler(req, res) {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "no-cache, no-transform",
     "X-Accel-Buffering": "no",
+    "X-Model": usedModel,
+    "X-Attempts": String(attempts),
+    "Access-Control-Expose-Headers": "X-Model, X-Attempts",
   });
 
   // Parse SSE dari Gemini, kirim teks polos ke client

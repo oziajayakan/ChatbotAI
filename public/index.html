@@ -250,6 +250,7 @@
   .rtop .nm { color: var(--text); font-weight: 700; }
   .rtag { font-size: 8px; font-weight: 800; padding: 1px 5px; border-radius: 2px; color: var(--text-mid); background: rgba(255,255,255,.04); white-space: nowrap; }
   .rtag.pk { background: var(--accent); color: #060409; box-shadow: 0 0 8px var(--accent-glow); }
+  .rtag.warn { background: var(--amber); color: #050408; box-shadow: 0 0 8px rgba(255, 176, 0, .5); }
   .rtag.pu { background: rgba(169, 92, 255, .22); color: #d8a6ff; border: 1px solid rgba(169, 92, 255, .45); }
   .rbot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .rbot canvas { width: 80px; height: 18px; display: block; }
@@ -707,7 +708,7 @@
   <section class="ribbon" aria-label="Telemetri">
     <div class="rcard" id="rc0"><div class="rtop"><div><span class="n">01</span><span class="nm">INPUT</span></div><span class="rtag" id="rt0">READY</span></div><div class="rbot"><canvas id="rs0"></canvas><span class="rval" id="rv0">0 ch</span></div></div>
     <div class="rcard" id="rc1"><div class="rtop"><div><span class="n">02</span><span class="nm">CONTEXT</span></div><span class="rtag pu" id="rt1">0 / 30</span></div><div class="rbot"><canvas id="rs1"></canvas><span class="rval" id="rv1">0%</span></div></div>
-    <div class="rcard hl" id="rc2"><div class="rtop"><div><span class="n">03</span><span class="nm">MODEL</span></div><span class="rtag pk">FLASH</span></div><div class="rbot"><canvas id="rs2"></canvas><span class="rval" id="rv2">— ms</span></div></div>
+    <div class="rcard hl" id="rc2"><div class="rtop"><div><span class="n">03</span><span class="nm">MODEL</span></div><span class="rtag pk" id="rt2" title="Model yang dipakai">FLASH</span></div><div class="rbot"><canvas id="rs2"></canvas><span class="rval" id="rv2">— ms</span></div></div>
     <div class="rcard" id="rc3"><div class="rtop"><div><span class="n">04</span><span class="nm">STREAM</span></div><span class="rtag" id="rt3">SSE</span></div><div class="rbot"><canvas id="rs3"></canvas><span class="rval" id="rv3">0 c/s</span></div></div>
     <div class="rcard" id="rc4"><div class="rtop"><div><span class="n">05</span><span class="nm">MEMORY</span></div><span class="rtag pu" id="dbBadge">SQLite3</span></div><div class="rbot"><canvas id="rs4"></canvas><span class="rval" id="rv4">0 conv</span></div></div>
     <div class="rcard" id="rc5"><div class="rtop"><div><span class="n">06</span><span class="nm">STATE</span></div><span class="rtag" id="rt5">IDLE</span></div><div class="rbot"><canvas id="rs5"></canvas><span class="rval" id="rv5">STANDBY</span></div></div>
@@ -1136,6 +1137,14 @@ async function send(text) {
         throw new Error("Jangan buka dari Live Server (port 5500). Jalankan 'npm run dev' lalu buka http://localhost:3000");
       }
       throw new Error(data.error || `Server error (${res.status})`);
+    }
+
+    const usedModel = res.headers.get("X-Model");
+    if (usedModel) {
+      const tries = Number(res.headers.get("X-Attempts") || 1);
+      $("#rt2").textContent = usedModel.replace(/^gemini-/, "").toUpperCase();
+      $("#rt2").title = `Model: ${usedModel} · percobaan ke-${tries}` + (tries > 1 ? ` (${tries - 1} model gagal/sibuk dilewati)` : "");
+      $("#rt2").classList.toggle("warn", tries > 1);
     }
 
     const reader = res.body.getReader();
