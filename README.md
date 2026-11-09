@@ -64,3 +64,11 @@ ChatbotAI/
    - `GEMINI_API_KEY` = API key dari Google AI Studio (`https://aistudio.google.com/apikey`)
    - `GEMINI_MODEL` = `gemini-3.8-flash` (opsional, otomatis fallback ke `gemini-flash-latest`)
 4. Klik **Deploy**. Proyek langsung online! ✅
+
+---
+
+## Kontributor
+| Kontributor | Peran |
+|---|---|
+| [@oziajayakan](https://github.com/oziajayakan) | Pemilik & pengembang utama |
+| [Devin](https://devin.ai) ([@devin-ai-integration](https://github.com/apps/devin-ai-integration)) | AI software engineer dari Cognition AI |
