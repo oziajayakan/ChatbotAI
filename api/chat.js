@@ -5,7 +5,18 @@ import { getSqlite } from "./db.js";
 export const config = { maxDuration: 60 };
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+const FALLBACK_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -100,12 +111,20 @@ export default async function handler(req, res) {
         lastErrorDetail = (await resp.json())?.error?.message || "";
       } catch {}
 
-      // Jika error bukan karena model deprecated/404, jangan retry model lain
-      if (resp.status !== 404 && !lastErrorDetail.includes("no longer available")) {
+      // Retry / lanjut ke model fallback jika model deprecated (404), rate-limited (429), atau server sibuk / high demand (500, 502, 503, 504)
+      const isRetryable =
+        [404, 429, 500, 502, 503, 504].includes(resp.status) ||
+        /no longer available|high demand|overloaded|unavailable|resource exhausted|try again/i.test(lastErrorDetail);
+
+      if (!isRetryable) {
         break;
       }
+
+      // Jeda singkat sebelum beralih ke model cadangan berikutnya
+      await sleep(250);
     } catch {
       lastErrorDetail = "Gagal menghubungi Gemini API.";
+      await sleep(250);
     }
   }
 
