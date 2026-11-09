@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+.vercel
+.tmp
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+CloudComputing/
+
