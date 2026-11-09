@@ -18,6 +18,10 @@ const FALLBACK_MODELS = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Cache model yang terakhir sukses + batas waktu tunggu respons awal per model
+let workingModel = null;
+const CONNECT_TIMEOUT_MS = 12000;
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -80,16 +84,20 @@ export default async function handler(req, res) {
     // Jangan gagalkan chat jika SQLite mengalami kendala I/O
   }
 
-  const candidateModels = [...new Set([DEFAULT_MODEL, ...FALLBACK_MODELS])];
+  // Model yang terakhir berhasil dicoba lebih dulu (tetap hangat antar request di instance yang sama)
+  const candidateModels = [...new Set([workingModel, DEFAULT_MODEL, ...FALLBACK_MODELS].filter(Boolean))];
   let upstream = null;
   let lastErrorDetail = "";
   let lastStatus = 502;
 
   for (const modelName of candidateModels) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse`;
+    const ac = new AbortController();
+    const connectTimer = setTimeout(() => ac.abort(), CONNECT_TIMEOUT_MS);
     try {
       const resp = await fetch(url, {
         method: "POST",
+        signal: ac.signal,
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
@@ -101,8 +109,11 @@ export default async function handler(req, res) {
         }),
       });
 
+      clearTimeout(connectTimer);
+
       if (resp.ok && resp.body) {
         upstream = resp;
+        workingModel = modelName;
         break;
       }
 
@@ -123,7 +134,9 @@ export default async function handler(req, res) {
       // Jeda singkat sebelum beralih ke model cadangan berikutnya
       await sleep(250);
     } catch {
-      lastErrorDetail = "Gagal menghubungi Gemini API.";
+      clearTimeout(connectTimer);
+      lastErrorDetail = "Gagal menghubungi Gemini API (timeout atau koneksi putus).";
+      if (workingModel === modelName) workingModel = null;
       await sleep(250);
     }
   }
