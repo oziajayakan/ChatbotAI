@@ -10,7 +10,14 @@ import { getSqlite } from "./db.js";
  * - DELETE /api/history?id=<conv_id> -> Hapus 1 percakapan / pesan / semua riwayat (DELETE)
  */
 export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   let db;
   try {

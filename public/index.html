@@ -1579,6 +1579,9 @@ async function send(text) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      if (res.status === 405 && location.port === "5500") {
+        throw new Error("Jangan buka dari Live Server (port 5500). Jalankan 'npm run dev' lalu buka http://localhost:3000");
+      }
       throw new Error(data.error || `Server error (${res.status})`);
     }
 
