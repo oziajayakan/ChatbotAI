@@ -1011,9 +1011,15 @@ function getLocalBackup() { try { return JSON.parse(localStorage.getItem("nova-c
 async function loadConversations() {
   try {
     const res = await fetch("/api/history");
-    if (!res.ok) throw new Error("Gagal memuat SQLite");
+    if (!res.ok) throw new Error("Gagal memuat Database");
     const data = await res.json();
-    if (data.engine) $("#dbBadge").textContent = data.engine.includes("sqlite") ? "SQLite3" : "SQLite";
+    if (data.isCloud || (data.engine && data.engine.includes("Turso"))) {
+      $("#dbBadge").textContent = "TURSO CLOUD";
+      $("#dbBadge").style.borderColor = "var(--green)";
+      $("#dbBadge").style.color = "var(--green)";
+    } else if (data.engine) {
+      $("#dbBadge").textContent = data.engine.includes("sqlite") ? "SQLite3 (Local)" : "SQLite (Local)";
+    }
     conversations = Array.isArray(data.conversations) ? data.conversations : [];
     saveLocalBackup();
   } catch {
