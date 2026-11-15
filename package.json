@@ -25,5 +25,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "vercel-dev": "vercel dev"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0"
   }
 }

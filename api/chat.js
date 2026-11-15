@@ -73,18 +73,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Tidak ada pesan valid untuk dikirim." });
   }
 
-  // Simpan pesan user terakhir ke SQLite jika conversationId disertakan
+  // Simpan pesan user terakhir ke SQLite / Cloud DB jika conversationId disertakan
   let db = null;
   try {
     if (conversationId) {
       db = await getSqlite();
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.role === "user" && lastMsg.content) {
-        db.addMessage(conversationId, { role: "user", content: lastMsg.content });
+        await db.addMessage(conversationId, { role: "user", content: lastMsg.content });
       }
     }
   } catch {
-    // Jangan gagalkan chat jika SQLite mengalami kendala I/O
+    // Jangan gagalkan chat jika database mengalami kendala I/O
   }
 
   // Model yang terakhir berhasil dicoba lebih dulu (tetap hangat antar request di instance yang sama)
@@ -241,10 +241,10 @@ export default async function handler(req, res) {
   }
   if (inThought) res.write("\u0002");
 
-  // Simpan balasan AI ke SQLite
+  // Simpan balasan AI ke SQLite / Cloud Database
   try {
     if (db && conversationId && fullReply.trim()) {
-      db.addMessage(conversationId, { role: "assistant", content: fullReply });
+      await db.addMessage(conversationId, { role: "assistant", content: fullReply });
     }
   } catch {}
 

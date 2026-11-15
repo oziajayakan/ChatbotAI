@@ -3,27 +3,201 @@ import os from "node:os";
 import path from "node:path";
 
 /**
- * Helper Database SQLite untuk Riwayat Chatbot AI (CRUD)
- * Mendukung Node.js built-in `node:sqlite` (Node >= 22 / Vercel Node 22.x)
- * serta fallback otomatis ke JSONite file-backed SQLite emulator jika dijalankan di Node < 22.
- * Di lingkungan Vercel Serverless, file disimpan di `/tmp/nova_chatbot.db` (writable directory).
+ * Universal Database Manager untuk Riwayat Chatbot AI (CRUD):
+ * 1. Cloud Database (Turso / LibSQL) jika TURSO_DATABASE_URL diatur (Persisten di Serverless/Vercel).
+ * 2. SQLite bawaan (node:sqlite) untuk pengembangan lokal atau deployment berbasis file.
+ * 3. JSON Store fallback jika environment Node < 22 tidak mendukung node:sqlite.
  */
 
 const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DB_DIR = isVercel ? os.tmpdir() : path.join(process.cwd(), ".tmp");
 const DB_PATH = process.env.SQLITE_DB_PATH || path.join(DB_DIR, "nova_chatbot.db");
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
+const TURSO_URL = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || process.env.DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
 
-let sqliteInstance = null;
+let dbInstance = null;
 
-async function getSqlite() {
-  if (sqliteInstance) return sqliteInstance;
+export async function getSqlite() {
+  if (dbInstance) return dbInstance;
+
+  // MODE 1: CLOUD DATABASE (Turso / LibSQL)
+  if (TURSO_URL && !TURSO_URL.startsWith("file:")) {
+    try {
+      const { createClient } = await import("@libsql/client");
+      const client = createClient({
+        url: TURSO_URL,
+        authToken: TURSO_AUTH_TOKEN,
+      });
+
+      // Inisialisasi tabel cloud jika belum ada
+      await client.batch([
+        `CREATE TABLE IF NOT EXISTS conversations (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );`,
+        `CREATE TABLE IF NOT EXISTS messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id TEXT NOT NULL,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+        );`,
+        `CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);`
+      ]);
+
+      dbInstance = {
+        engine: "Turso LibSQL (Cloud SQLite)",
+        isCloud: true,
+
+        async listConversations() {
+          const res = await client.execute(`
+            SELECT c.id, c.title, c.created_at, c.updated_at,
+                   COUNT(m.id) AS message_count
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC
+          `);
+          return res.rows.map((r) => ({
+            id: String(r.id),
+            title: String(r.title),
+            created_at: String(r.created_at),
+            updated_at: String(r.updated_at),
+            message_count: Number(r.message_count || 0),
+          }));
+        },
+
+        async getConversation(id) {
+          const convRes = await client.execute({
+            sql: `SELECT * FROM conversations WHERE id = ?`,
+            args: [id],
+          });
+          if (convRes.rows.length === 0) return null;
+          const conv = convRes.rows[0];
+
+          const msgRes = await client.execute({
+            sql: `SELECT id, conversation_id, role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC`,
+            args: [id],
+          });
+
+          return {
+            id: String(conv.id),
+            title: String(conv.title),
+            created_at: String(conv.created_at),
+            updated_at: String(conv.updated_at),
+            messages: msgRes.rows.map((m) => ({
+              id: Number(m.id),
+              conversation_id: String(m.conversation_id),
+              role: String(m.role),
+              content: String(m.content),
+              created_at: String(m.created_at),
+            })),
+          };
+        },
+
+        async createConversation({ id, title = "Percakapan Baru" }) {
+          const now = new Date().toISOString();
+          const convId = id || `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          await client.execute({
+            sql: `INSERT INTO conversations (id, title, created_at, updated_at)
+                  VALUES (?, ?, ?, ?)
+                  ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at`,
+            args: [convId, title.slice(0, 120), now, now],
+          });
+          return await this.getConversation(convId);
+        },
+
+        async updateConversation(id, { title }) {
+          const now = new Date().toISOString();
+          const res = await client.execute({
+            sql: `UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?`,
+            args: [title.slice(0, 120), now, id],
+          });
+          if (res.rowsAffected === 0) return null;
+          return await this.getConversation(id);
+        },
+
+        async deleteConversation(id) {
+          await client.execute({ sql: `DELETE FROM messages WHERE conversation_id = ?`, args: [id] });
+          const res = await client.execute({ sql: `DELETE FROM conversations WHERE id = ?`, args: [id] });
+          return res.rowsAffected > 0;
+        },
+
+        async clearAllConversations() {
+          await client.batch([
+            `DELETE FROM messages;`,
+            `DELETE FROM conversations;`
+          ]);
+          return true;
+        },
+
+        async addMessage(conversationId, { role, content }) {
+          const now = new Date().toISOString();
+          const check = await client.execute({
+            sql: `SELECT id FROM conversations WHERE id = ?`,
+            args: [conversationId],
+          });
+
+          if (check.rows.length === 0) {
+            const autoTitle = content.slice(0, 50).trim() || "Percakapan Baru";
+            await client.execute({
+              sql: `INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+              args: [conversationId, autoTitle, now, now],
+            });
+          } else {
+            await client.execute({
+              sql: `UPDATE conversations SET updated_at = ? WHERE id = ?`,
+              args: [now, conversationId],
+            });
+          }
+
+          const res = await client.execute({
+            sql: `INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)`,
+            args: [conversationId, role, content, now],
+          });
+
+          return {
+            id: Number(res.lastInsertRowid),
+            conversation_id: conversationId,
+            role,
+            content,
+            created_at: now,
+          };
+        },
+
+        async updateMessage(messageId, { content }) {
+          const res = await client.execute({
+            sql: `UPDATE messages SET content = ? WHERE id = ?`,
+            args: [content, Number(messageId)],
+          });
+          return res.rowsAffected > 0;
+        },
+
+        async deleteMessage(messageId) {
+          const res = await client.execute({
+            sql: `DELETE FROM messages WHERE id = ?`,
+            args: [Number(messageId)],
+          });
+          return res.rowsAffected > 0;
+        },
+      };
+
+      return dbInstance;
+    } catch (tursoErr) {
+      console.warn("Koneksi Turso Cloud gagal, beralih ke SQLite lokal:", tursoErr.message);
+    }
+  }
+
+  // MODE 2: LOCAL SQLITE (node:sqlite)
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
 
   try {
-    // Gunakan built-in SQLite resmi Node.js (DatabaseSync)
     const { DatabaseSync } = await import("node:sqlite");
     const db = new DatabaseSync(DB_PATH);
 
@@ -46,12 +220,12 @@ async function getSqlite() {
       CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
     `);
 
-    sqliteInstance = {
-      engine: "node:sqlite (SQLite3)",
+    dbInstance = {
+      engine: "node:sqlite (Local SQLite3)",
+      isCloud: false,
       dbPath: DB_PATH,
 
-      // READ ALL CONVERSATIONS
-      listConversations() {
+      async listConversations() {
         const stmt = db.prepare(`
           SELECT c.id, c.title, c.created_at, c.updated_at,
                  COUNT(m.id) AS message_count
@@ -63,24 +237,19 @@ async function getSqlite() {
         return stmt.all();
       },
 
-      // READ ONE CONVERSATION WITH MESSAGES
-      getConversation(id) {
-        const convStmt = db.prepare(`SELECT * FROM conversations WHERE id = ?`);
-        const conv = convStmt.get(id);
+      async getConversation(id) {
+        const conv = db.prepare(`SELECT * FROM conversations WHERE id = ?`).get(id);
         if (!conv) return null;
-
-        const msgStmt = db.prepare(`
+        const messages = db.prepare(`
           SELECT id, conversation_id, role, content, created_at
           FROM messages
           WHERE conversation_id = ?
           ORDER BY id ASC
-        `);
-        const messages = msgStmt.all(id);
+        `).all(id);
         return { ...conv, messages };
       },
 
-      // CREATE CONVERSATION
-      createConversation({ id, title = "Percakapan Baru" }) {
+      async createConversation({ id, title = "Percakapan Baru" }) {
         const now = new Date().toISOString();
         const convId = id || `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const stmt = db.prepare(`
@@ -89,57 +258,44 @@ async function getSqlite() {
           ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at
         `);
         stmt.run(convId, title.slice(0, 120), now, now);
-        return this.getConversation(convId);
+        return await this.getConversation(convId);
       },
 
-      // UPDATE CONVERSATION (Title)
-      updateConversation(id, { title }) {
+      async updateConversation(id, { title }) {
         const now = new Date().toISOString();
-        const stmt = db.prepare(`
-          UPDATE conversations
-          SET title = ?, updated_at = ?
-          WHERE id = ?
-        `);
-        const res = stmt.run(title.slice(0, 120), now, id);
+        const res = db.prepare(`UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?`)
+          .run(title.slice(0, 120), now, id);
         if (res.changes === 0) return null;
-        return this.getConversation(id);
+        return await this.getConversation(id);
       },
 
-      // DELETE CONVERSATION
-      deleteConversation(id) {
-        const delMsgs = db.prepare(`DELETE FROM messages WHERE conversation_id = ?`);
-        delMsgs.run(id);
-        const stmt = db.prepare(`DELETE FROM conversations WHERE id = ?`);
-        const res = stmt.run(id);
+      async deleteConversation(id) {
+        db.prepare(`DELETE FROM messages WHERE conversation_id = ?`).run(id);
+        const res = db.prepare(`DELETE FROM conversations WHERE id = ?`).run(id);
         return res.changes > 0;
       },
 
-      // DELETE ALL CONVERSATIONS
-      clearAllConversations() {
+      async clearAllConversations() {
         db.exec(`DELETE FROM messages; DELETE FROM conversations;`);
         return true;
       },
 
-      // CREATE MESSAGE
-      addMessage(conversationId, { role, content }) {
+      async addMessage(conversationId, { role, content }) {
         const now = new Date().toISOString();
-        // Pastikan conversation ada
         const check = db.prepare(`SELECT id FROM conversations WHERE id = ?`).get(conversationId);
         if (!check) {
           const autoTitle = content.slice(0, 50).trim() || "Percakapan Baru";
           db.prepare(`
-            INSERT INTO conversations (id, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)
           `).run(conversationId, autoTitle, now, now);
         } else {
           db.prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`).run(now, conversationId);
         }
 
-        const stmt = db.prepare(`
-          INSERT INTO messages (conversation_id, role, content, created_at)
-          VALUES (?, ?, ?, ?)
-        `);
-        const res = stmt.run(conversationId, role, content, now);
+        const res = db.prepare(`
+          INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)
+        `).run(conversationId, role, content, now);
+
         return {
           id: Number(res.lastInsertRowid),
           conversation_id: conversationId,
@@ -149,24 +305,20 @@ async function getSqlite() {
         };
       },
 
-      // UPDATE MESSAGE
-      updateMessage(messageId, { content }) {
-        const stmt = db.prepare(`UPDATE messages SET content = ? WHERE id = ?`);
-        const res = stmt.run(content, Number(messageId));
+      async updateMessage(messageId, { content }) {
+        const res = db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run(content, Number(messageId));
         return res.changes > 0;
       },
 
-      // DELETE MESSAGE
-      deleteMessage(messageId) {
-        const stmt = db.prepare(`DELETE FROM messages WHERE id = ?`);
-        const res = stmt.run(Number(messageId));
+      async deleteMessage(messageId) {
+        const res = db.prepare(`DELETE FROM messages WHERE id = ?`).run(Number(messageId));
         return res.changes > 0;
-      }
+      },
     };
 
-    return sqliteInstance;
+    return dbInstance;
   } catch (err) {
-    // Fallback jika environment Node < 22 tidak memiliki node:sqlite
+    // MODE 3: FALLBACK FILE JSON STORE
     const jsonPath = `${DB_PATH}.json`;
     const loadStore = () => {
       try {
@@ -180,10 +332,12 @@ async function getSqlite() {
       fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2), "utf8");
     };
 
-    sqliteInstance = {
-      engine: "sqlite-json-fallback",
+    dbInstance = {
+      engine: "JSON File Fallback Store",
+      isCloud: false,
       dbPath: jsonPath,
-      listConversations() {
+
+      async listConversations() {
         const store = loadStore();
         return store.conversations
           .map((c) => ({
@@ -192,7 +346,8 @@ async function getSqlite() {
           }))
           .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
       },
-      getConversation(id) {
+
+      async getConversation(id) {
         const store = loadStore();
         const conv = store.conversations.find((c) => c.id === id);
         if (!conv) return null;
@@ -201,7 +356,8 @@ async function getSqlite() {
           .sort((a, b) => a.id - b.id);
         return { ...conv, messages };
       },
-      createConversation({ id, title = "Percakapan Baru" }) {
+
+      async createConversation({ id, title = "Percakapan Baru" }) {
         const store = loadStore();
         const now = new Date().toISOString();
         const convId = id || `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -213,18 +369,20 @@ async function getSqlite() {
           conv.updated_at = now;
         }
         saveStore(store);
-        return this.getConversation(convId);
+        return await this.getConversation(convId);
       },
-      updateConversation(id, { title }) {
+
+      async updateConversation(id, { title }) {
         const store = loadStore();
         const conv = store.conversations.find((c) => c.id === id);
         if (!conv) return null;
         conv.title = title.slice(0, 120);
         conv.updated_at = new Date().toISOString();
         saveStore(store);
-        return this.getConversation(id);
+        return await this.getConversation(id);
       },
-      deleteConversation(id) {
+
+      async deleteConversation(id) {
         const store = loadStore();
         const before = store.conversations.length;
         store.conversations = store.conversations.filter((c) => c.id !== id);
@@ -232,11 +390,13 @@ async function getSqlite() {
         saveStore(store);
         return store.conversations.length < before;
       },
-      clearAllConversations() {
+
+      async clearAllConversations() {
         saveStore({ conversations: [], messages: [], seq: 1 });
         return true;
       },
-      addMessage(conversationId, { role, content }) {
+
+      async addMessage(conversationId, { role, content }) {
         const store = loadStore();
         const now = new Date().toISOString();
         let conv = store.conversations.find((c) => c.id === conversationId);
@@ -262,7 +422,8 @@ async function getSqlite() {
         saveStore(store);
         return msg;
       },
-      updateMessage(messageId, { content }) {
+
+      async updateMessage(messageId, { content }) {
         const store = loadStore();
         const msg = store.messages.find((m) => m.id === Number(messageId));
         if (!msg) return false;
@@ -270,7 +431,8 @@ async function getSqlite() {
         saveStore(store);
         return true;
       },
-      deleteMessage(messageId) {
+
+      async deleteMessage(messageId) {
         const store = loadStore();
         const before = store.messages.length;
         store.messages = store.messages.filter((m) => m.id !== Number(messageId));
@@ -278,8 +440,7 @@ async function getSqlite() {
         return store.messages.length < before;
       },
     };
-    return sqliteInstance;
+
+    return dbInstance;
   }
 }
-
-export { getSqlite };
