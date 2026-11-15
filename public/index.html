@@ -1007,8 +1007,28 @@ chat.addEventListener("click", (e) => {
 /* ---------- SQLite CRUD API & local backup ---------- */
 function saveLocalBackup() { try { localStorage.setItem("nova-conv-backup", JSON.stringify(conversations)); } catch {} }
 function getLocalBackup() { try { return JSON.parse(localStorage.getItem("nova-conv-backup") || "[]"); } catch { return []; } }
+function saveLocalMessages(id, msgs) {
+  if (!id) return;
+  try { localStorage.setItem("nova-msgs-" + id, JSON.stringify(msgs)); } catch {}
+}
+function getLocalMessages(id) {
+  if (!id) return [];
+  try { return JSON.parse(localStorage.getItem("nova-msgs-" + id) || "[]"); } catch { return []; }
+}
+function removeLocalMessages(id) {
+  if (!id) return;
+  try { localStorage.removeItem("nova-msgs-" + id); } catch {}
+}
+function clearAllLocalMessages() {
+  try {
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith("nova-msgs-") || k === "nova-conv-backup") localStorage.removeItem(k);
+    });
+  } catch {}
+}
 
 async function loadConversations() {
+  const localConvs = getLocalBackup();
   try {
     const res = await fetch("/api/history");
     if (!res.ok) throw new Error("Gagal memuat Database");
@@ -1020,10 +1040,17 @@ async function loadConversations() {
     } else if (data.engine) {
       $("#dbBadge").textContent = data.engine.includes("sqlite") ? "SQLite3 (Local)" : "SQLite (Local)";
     }
-    conversations = Array.isArray(data.conversations) ? data.conversations : [];
+    const serverConvs = Array.isArray(data.conversations) ? data.conversations : [];
+    // Gabungkan riwayat lokal & server agar riwayat tidak hilang saat cold start /tmp Vercel
+    const merged = new Map();
+    for (const c of localConvs) { if (c && c.id) merged.set(c.id, c); }
+    for (const c of serverConvs) { if (c && c.id) merged.set(c.id, c); }
+    conversations = Array.from(merged.values()).sort((a, b) =>
+      String(b.updated_at || "").localeCompare(String(a.updated_at || ""))
+    );
     saveLocalBackup();
   } catch {
-    conversations = getLocalBackup();
+    conversations = localConvs;
   }
   renderConversationList();
 }
@@ -1100,18 +1127,19 @@ async function selectConversation(id) {
     const data = await res.json();
     const msgs = data.conversation?.messages || [];
     history = msgs.map((m) => ({ role: m.role, content: m.content }));
-    chat.innerHTML = "";
-    if (history.length === 0) {
-      showWelcome();
-    } else {
-      for (const m of history) {
-        const b = addMessage(m.role, m.content, m.role === "user" ? detectIntent(m.content).k : "");
-        if (m.role === "assistant") { b.classList.add("md"); b.innerHTML = renderMD(m.content); }
-      }
-      scrollDown();
-    }
+    saveLocalMessages(id, history);
   } catch {
+    history = getLocalMessages(id);
+  }
+  chat.innerHTML = "";
+  if (history.length === 0) {
     showWelcome();
+  } else {
+    for (const m of history) {
+      const b = addMessage(m.role, m.content, m.role === "user" ? detectIntent(m.content).k : "");
+      if (m.role === "assistant") { b.classList.add("md"); b.innerHTML = renderMD(m.content); }
+    }
+    scrollDown();
   }
   tele.replyText = history.filter((m) => m.role === "assistant").slice(-1)[0]?.content || "";
 }
@@ -1126,6 +1154,7 @@ async function renameConversation(id, title) {
 async function removeConversation(id) {
   try { await fetch(`/api/history?id=${encodeURIComponent(id)}`, { method: "DELETE" }); } catch {}
   conversations = conversations.filter((c) => c.id !== id);
+  removeLocalMessages(id);
   saveLocalBackup();
   if (currentConvId === id) startNewChat(); else renderConversationList();
 }
@@ -1135,7 +1164,7 @@ $("#clearAllBtn").onclick = async () => {
   if (!confirm("Yakin ingin menghapus seluruh riwayat percakapan di database?")) return;
   try { await fetch("/api/history?all=true", { method: "DELETE" }); } catch {}
   conversations = [];
-  saveLocalBackup();
+  clearAllLocalMessages();
   startNewChat();
 };
 
@@ -1405,6 +1434,7 @@ async function send(text) {
     full += dec.decode();
     bubble.innerHTML = renderMD(full || "_(tidak ada balasan)_");
     history.push({ role: "assistant", content: full });
+    saveLocalMessages(currentConvId, history);
     tele.replyText = full; tele.replyLen = full.length;
     const secs = Math.max(0.1, (performance.now() - tele.t0) / 1000);
     trace("STREAM", `selesai · ${full.length} ch · ${secs.toFixed(1)} s · ${Math.round(full.length / secs)} c/s`);
@@ -1420,6 +1450,7 @@ async function send(text) {
       trace("SYS", "dihentikan oleh pengguna");
       if (full) {
         history.push({ role: "assistant", content: full });
+    saveLocalMessages(currentConvId, history);
         fetch("/api/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
